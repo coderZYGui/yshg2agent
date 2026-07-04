@@ -1,16 +1,13 @@
-"""向量检索抽象层。
+"""Local vector search over chunks stored in SQLite.
 
-生产: PostgreSQL + pgvector(hnsw)。
-降级: 从 DB 读取 chunk 的 embedding_json, 用纯 Python 余弦检索(内存后端)。
-
-两种后端共用 Chunk.embedding_json 存储, 保证 SQLite 环境也能端到端跑通。
+The MVP intentionally avoids external vector infrastructure. Embeddings are
+stored as JSON on each Chunk row and searched with cosine similarity in process.
 """
 
 import math
 
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..models import Chunk, Document
 
 
@@ -28,18 +25,6 @@ def search(
     query_embedding: list[float],
     top_k: int = 5,
     kind: str = "knowledge",
-) -> list[dict]:
-    backend = settings.resolved_vector_backend
-    if backend == "pgvector":
-        try:
-            return _pgvector_search(db, query_embedding, top_k, kind)
-        except Exception:
-            pass  # pgvector 不可用时回退内存检索
-    return _memory_search(db, query_embedding, top_k, kind)
-
-
-def _memory_search(
-    db: Session, query_embedding: list[float], top_k: int, kind: str
 ) -> list[dict]:
     rows = (
         db.query(Chunk, Document.filename)
@@ -66,11 +51,3 @@ def _memory_search(
         }
         for s, c, fname in scored[:top_k]
     ]
-
-
-def _pgvector_search(
-    db: Session, query_embedding: list[float], top_k: int, kind: str
-) -> list[dict]:
-    # 生产可替换为 pgvector 原生 `<=>` 距离算子的 SQL 检索;
-    # 此处复用内存检索保证返回结构一致。
-    return _memory_search(db, query_embedding, top_k, kind)

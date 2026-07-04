@@ -5,7 +5,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import AuditLog, Document, User
 from ..schemas import DocumentOut
-from ..services import parser, rag, storage
+from ..services import knowledge_index, parser, rag, storage
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
@@ -59,6 +59,7 @@ def delete_knowledge(
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="知识库文档不存在")
+    knowledge_index.delete_document(doc.id)
     db.delete(doc)
     db.add(AuditLog(user_id=user.id, action="delete_knowledge", target=doc.filename))
     db.commit()

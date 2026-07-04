@@ -1,5 +1,3 @@
-"""对象存储抽象: 默认本地文件系统, 生产可切换 MinIO。"""
-
 import uuid
 from pathlib import Path
 

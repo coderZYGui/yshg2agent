@@ -18,7 +18,7 @@ async def upload_document(
     user: User = Depends(get_current_user),
 ):
     if kind not in {"review", "knowledge"}:
-        raise HTTPException(status_code=400, detail="kind 必须为 review 或 knowledge")
+        raise HTTPException(status_code=400, detail="kind must be review or knowledge")
 
     data = await file.read()
     path = storage.save_upload(file.filename or "upload.bin", data)
@@ -35,7 +35,7 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    # 同步解析(演示); 生产可交由 Celery 异步处理
+    # Synchronous parsing keeps the local-first MVP simple.
     text = parser.parse_document(path, doc.mime)
     doc.summary = text[:280]
     n_chunks = rag.ingest_document(db, doc, text)
@@ -52,5 +52,5 @@ def get_document(
 ):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
-        raise HTTPException(status_code=404, detail="文档不存在")
+        raise HTTPException(status_code=404, detail="document not found")
     return doc

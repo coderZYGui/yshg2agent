@@ -3,7 +3,7 @@
 from sqlalchemy.orm import Session
 
 from ..models import Chunk, Document
-from . import embeddings, parser, vectorstore
+from . import embeddings, knowledge_index, parser, vectorstore
 
 
 def ingest_document(db: Session, document: Document, full_text: str) -> int:
@@ -13,6 +13,7 @@ def ingest_document(db: Session, document: Document, full_text: str) -> int:
 
     pieces = parser.chunk_text(full_text)
     if not pieces:
+        knowledge_index.sync_document(document, [])
         return 0
 
     vectors = embeddings.embed_texts(pieces)
@@ -28,6 +29,7 @@ def ingest_document(db: Session, document: Document, full_text: str) -> int:
             )
         )
     db.commit()
+    knowledge_index.sync_document(document, pieces)
     return len(pieces)
 
 

@@ -23,8 +23,11 @@ dist-ssr/
 .vite/
 
 # Uploads / runtime data
-backend/data/uploads/
-backend/data/*.db
+backend/data/*
+!backend/data/.gitkeep
+!backend/data/knowledge/
+backend/data/knowledge/*
+!backend/data/knowledge/.gitkeep
 storage/
 
 # IDE

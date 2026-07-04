@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
+KNOWLEDGE_DIR = DATA_DIR / "knowledge"
+KNOWLEDGE_INDEX_FILE = KNOWLEDGE_DIR / "chunks.json"
 
 
 class Settings(BaseSettings):
@@ -19,8 +21,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
 
     database_url: str = ""
-
-    vector_backend: str = ""  # pgvector | memory | ""(auto)
+    vector_backend: str = "local"
 
     llm_provider: str = "minimax"
     llm_api_key: str = ""
@@ -33,12 +34,6 @@ class Settings(BaseSettings):
     embedding_model: str = "bge-m3"
     embedding_dim: int = 1024
 
-    storage_backend: str = "local"
-    minio_endpoint: str = "minio:9000"
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
-    minio_bucket: str = "compliance"
-
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     @property
@@ -50,10 +45,7 @@ class Settings(BaseSettings):
 
     @property
     def resolved_vector_backend(self) -> str:
-        if self.vector_backend:
-            return self.vector_backend
-        # auto: 使用 postgres 时启用 pgvector, 否则内存降级
-        return "pgvector" if self.resolved_database_url.startswith("postgresql") else "memory"
+        return self.vector_backend or "local"
 
     @property
     def llm_is_mock(self) -> bool:
@@ -75,3 +67,4 @@ def get_settings() -> Settings:
 
 settings = get_settings()
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
