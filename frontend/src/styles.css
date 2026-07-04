@@ -1,0 +1,350 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0a0a0b;
+  color: #f5f5f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 蓝色发光弧线氛围光 */
+.app-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      1200px 500px at 50% -10%,
+      rgba(59, 130, 246, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      800px 400px at 50% 0%,
+      rgba(96, 165, 250, 0.1),
+      transparent 55%
+    );
+  z-index: 0;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+}
+
+/* 左栏 */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: rgba(10, 10, 11, 0.6);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 12px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.brand-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.6);
+}
+
+.conv-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.conv-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #b8b8c0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.conv-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.conv-item.active {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #f5f5f7;
+}
+
+/* 中栏 */
+.chat-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+}
+
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 8%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.msg-row {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+}
+
+.msg-row.user {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.avatar.assistant {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+}
+
+.avatar.user {
+  background: #1b1b1f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bubble {
+  padding: 12px 16px;
+  border-radius: 14px;
+  line-height: 1.7;
+  font-size: 14px;
+  max-width: 80%;
+  word-break: break-word;
+}
+
+.bubble.assistant {
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bubble.user {
+  background: rgba(59, 130, 246, 0.16);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.empty-hero {
+  margin: auto;
+  text-align: center;
+  color: #8a8a93;
+}
+
+.empty-hero h1 {
+  color: #f5f5f7;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.empty-hero .accent {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.chat-input {
+  padding: 14px 8% 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.input-shell {
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-shell:focus-within {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #cfe0ff;
+}
+
+/* 右栏 */
+.review-col {
+  width: 380px;
+  flex-shrink: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 11, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.review-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  gap: 8px;
+}
+
+.review-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-summary {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #d7e3ff;
+}
+
+.risk-card {
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.risk-card .risk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.risk-loc {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.risk-field {
+  font-size: 12.5px;
+  color: #b8b8c0;
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+.risk-field b {
+  color: #e6e6ea;
+}
+
+.cite {
+  font-size: 11.5px;
+  color: #8a8a93;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(59, 130, 246, 0.5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.review-empty {
+  margin: auto;
+  color: #6b6b73;
+  text-align: center;
+  font-size: 13px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+/* 登录 */
+.login-wrap {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  width: 380px;
+  background: #141416;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 32px 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}

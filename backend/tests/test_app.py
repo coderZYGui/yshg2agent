@@ -1,0 +1,97 @@
+import json
+
+from app.services import parser
+from app.services.redaction import redact
+
+
+def test_health(client):
+    resp = client.get("/api/health")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["llm_mode"] == "mock"
+
+
+def test_register_login_me(client):
+    client.post(
+        "/api/auth/register",
+        json={"username": "alice", "password": "pw12345", "role": "legal"},
+    )
+    resp = client.post(
+        "/api/auth/login", data={"username": "alice", "password": "pw12345"}
+    )
+    assert resp.status_code == 200
+    token = resp.json()["access_token"]
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["role"] == "legal"
+
+
+def test_wrong_password(client):
+    client.post(
+        "/api/auth/register",
+        json={"username": "bob", "password": "correct1", "role": "pm"},
+    )
+    resp = client.post(
+        "/api/auth/login", data={"username": "bob", "password": "wrong"}
+    )
+    assert resp.status_code == 401
+
+
+def test_seeded_knowledge(client, auth_headers):
+    resp = client.get("/api/knowledge", headers=auth_headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) >= 4  # 内置知识库样本
+
+
+def test_chunk_text():
+    text = "a" * 1500
+    chunks = parser.chunk_text(text, size=600, overlap=100)
+    assert len(chunks) >= 3
+    assert all(len(c) <= 600 for c in chunks)
+
+
+def test_redaction():
+    text = "联系电话13800138000, 邮箱 test@example.com"
+    redacted, stats = redact(text)
+    assert "13800138000" not in redacted
+    assert "[手机号]" in redacted
+    assert "[邮箱]" in redacted
+    assert stats["[手机号]"] == 1
+
+
+def test_chat_stream_returns_review(client, auth_headers):
+    payload = {
+        "role": "pm",
+        "message": "我们要收集用户的身份证号和人脸信息用于实名认证, 是否合规?",
+        "document_ids": [],
+    }
+    with client.stream(
+        "POST", "/api/chat/stream", json=payload, headers=auth_headers
+    ) as resp:
+        assert resp.status_code == 200
+        raw = "".join(resp.iter_text())
+
+    assert "event: token" in raw
+    assert "event: review" in raw
+    assert "event: done" in raw
+
+    # 解析 review 事件
+    review_data = None
+    for block in raw.split("\n\n"):
+        if block.startswith("event: review"):
+            data_line = [l for l in block.splitlines() if l.startswith("data:")][0]
+            review_data = json.loads(data_line[len("data:"):].strip())
+    assert review_data is not None
+    assert "items" in review_data
+    assert len(review_data["items"]) >= 1
+
+
+def test_knowledge_upload_and_retrieve(client, auth_headers):
+    content = (
+        "本产品在注册环节强制收集用户通讯录和精确定位信息, 且未提供单独同意选项。"
+    ).encode("utf-8")
+    files = {"file": ("kb_test.md", content, "text/markdown")}
+    resp = client.post("/api/knowledge", files=files, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["parse_status"] == "done"

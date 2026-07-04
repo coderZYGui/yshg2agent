@@ -1,0 +1,19 @@
+# 生产附加依赖 (在核心依赖之上安装)
+-r requirements.txt
+
+# PostgreSQL + pgvector
+psycopg[binary]==3.2.3
+pgvector==0.3.6
+
+# 数值计算 (可选, 用于大规模向量检索加速)
+numpy>=2.1
+
+# 迁移
+alembic==1.14.0
+
+# 生产任务队列
+celery==5.4.0
+redis==5.2.1
+
+# 对象存储
+minio==7.2.13

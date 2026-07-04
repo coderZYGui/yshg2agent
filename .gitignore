@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+*.db
+*.sqlite3
+
+# Env / secrets
+.env
+.env.local
+backend/.env
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Uploads / runtime data
+backend/data/uploads/
+backend/data/*.db
+storage/
+
+# IDE
+.idea/
+.vscode/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
