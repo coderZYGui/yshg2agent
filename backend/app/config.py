@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     llm_model: str = "MiniMax-M1"
     llm_vision_model: str = "MiniMax-VL"
 
+    dashscope_api_key: str = ""
+    dashscope_app_id: str = ""
+    dashscope_base_url: str = "https://dashscope.aliyuncs.com/api/v1"
+
     embedding_api_key: str = ""
     embedding_base_url: str = ""
     embedding_model: str = "bge-m3"
@@ -49,6 +53,8 @@ class Settings(BaseSettings):
 
     @property
     def llm_is_mock(self) -> bool:
+        if self.llm_provider == "dashscope_app":
+            return not (self.dashscope_api_key and self.dashscope_app_id)
         return not self.llm_api_key
 
     @property

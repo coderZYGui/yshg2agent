@@ -1,8 +1,4 @@
-"""LLM Provider 抽象层。
-
-生产: MiniMax(OpenAI 兼容) 流式 chat/completions。
-降级: 无 API Key 时使用 Mock, 基于检索上下文生成结构化评审, 保证离线自验证。
-"""
+"""LLM provider layer."""
 
 import json
 from collections.abc import AsyncIterator
@@ -22,8 +18,72 @@ async def stream_chat(
         async for tok in _mock_stream(mock_payload or {}):
             yield tok
         return
+    if settings.llm_provider == "dashscope_app":
+        async for tok in _dashscope_app_stream(system_prompt, user_prompt, images):
+            yield tok
+        return
     async for tok in _minimax_stream(system_prompt, user_prompt, images):
         yield tok
+
+
+def _join_prompts(system_prompt: str, user_prompt: str) -> str:
+    return f"{system_prompt}\n\n{user_prompt}".strip()
+
+
+def _dashscope_text(obj: dict) -> str:
+    output = obj.get("output")
+    if isinstance(output, dict):
+        text = output.get("text")
+        if isinstance(text, str):
+            return text
+
+    choices = obj.get("choices")
+    if isinstance(choices, list) and choices:
+        choice = choices[0]
+        delta = choice.get("delta") if isinstance(choice, dict) else None
+        if isinstance(delta, dict) and isinstance(delta.get("content"), str):
+            return delta["content"]
+
+    return ""
+
+
+async def _dashscope_app_stream(
+    system_prompt: str, user_prompt: str, images: list[str] | None
+) -> AsyncIterator[str]:
+    input_payload: dict = {"prompt": _join_prompts(system_prompt, user_prompt)}
+    if images:
+        input_payload["image_list"] = images
+
+    payload = {
+        "input": input_payload,
+        "parameters": {"incremental_output": True},
+        "debug": {},
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.dashscope_api_key}",
+        "Content-Type": "application/json",
+        "X-DashScope-SSE": "enable",
+    }
+    url = (
+        f"{settings.dashscope_base_url.rstrip('/')}/apps/"
+        f"{settings.dashscope_app_id}/completion"
+    )
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        async with client.stream("POST", url, json=payload, headers=headers) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data = line[len("data:"):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    token = _dashscope_text(json.loads(data))
+                except json.JSONDecodeError:
+                    continue
+                if token:
+                    yield token
 
 
 async def _minimax_stream(
@@ -69,13 +129,16 @@ async def _minimax_stream(
 
 
 async def _mock_stream(payload: dict) -> AsyncIterator[str]:
-    """基于检索到的上下文构造一个结构化评审(演示/离线用)。"""
     question: str = payload.get("question", "")
     citations: list[dict] = payload.get("citations", [])
     has_doc: bool = payload.get("has_doc", False)
 
     cites = [
-        {"document": c.get("document", "知识库"), "snippet": c.get("snippet", "")[:80], "score": round(c.get("score", 0.0), 3)}
+        {
+            "document": c.get("document", "知识库"),
+            "snippet": c.get("snippet", "")[:80],
+            "score": round(c.get("score", 0.0), 3),
+        }
         for c in citations[:2]
     ]
 
@@ -114,7 +177,6 @@ async def _mock_stream(payload: dict) -> AsyncIterator[str]:
 
     result = {"summary": summary, "items": items}
     text = json.dumps(result, ensure_ascii=False)
-    # 分块 yield 模拟流式
     step = 24
     for i in range(0, len(text), step):
         yield text[i : i + step]

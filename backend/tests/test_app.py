@@ -1,6 +1,6 @@
 import json
 
-from app.services import parser
+from app.services import llm, parser
 from app.services.redaction import redact
 
 
@@ -58,6 +58,15 @@ def test_redaction():
     assert "[手机号]" in redacted
     assert "[邮箱]" in redacted
     assert stats["[手机号]"] == 1
+
+
+def test_dashscope_text_extracts_application_output():
+    assert llm._dashscope_text({"output": {"text": "hello"}}) == "hello"
+    assert (
+        llm._dashscope_text({"choices": [{"delta": {"content": "fallback"}}]})
+        == "fallback"
+    )
+    assert llm._dashscope_text({"output": {}}) == ""
 
 
 def test_chat_stream_returns_review(client, auth_headers):

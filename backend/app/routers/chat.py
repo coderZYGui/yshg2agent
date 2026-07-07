@@ -1,5 +1,8 @@
+import base64
 import json
+import mimetypes
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -7,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..database import SessionLocal, get_db
 from ..deps import get_current_user
-from ..models import Conversation, Message, User
+from ..models import Conversation, Document, Message, User
 from ..schemas import ChatRequest
 from ..services import llm, rag
 from ..services.prompts import build_system_prompt, build_user_prompt
@@ -30,6 +33,22 @@ def _extract_json(text: str) -> dict | None:
         return json.loads(text[start : end + 1])
     except json.JSONDecodeError:
         return None
+
+
+def _image_data_urls(db: Session, document_ids: list[int]) -> list[str]:
+    if not document_ids:
+        return []
+
+    docs = db.query(Document).filter(Document.id.in_(document_ids)).all()
+    urls = []
+    for doc in docs:
+        path = Path(doc.storage_path)
+        mime = doc.mime or mimetypes.guess_type(doc.filename)[0] or ""
+        if not mime.startswith("image/") or not path.exists():
+            continue
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        urls.append(f"data:{mime};base64,{data}")
+    return urls
 
 
 @router.post("/stream")
@@ -63,6 +82,7 @@ async def chat_stream(
     context = rag.build_context(results)
     doc_text = rag.collect_document_text(db, req.document_ids)
     safe_doc, _ = redact(doc_text)
+    image_urls = _image_data_urls(db, req.document_ids)
 
     system_prompt = build_system_prompt(req.role)
     user_prompt = build_user_prompt(safe_query, context, safe_doc)
@@ -81,7 +101,7 @@ async def chat_stream(
 
         buffer = ""
         async for token in llm.stream_chat(
-            system_prompt, user_prompt, mock_payload=mock_payload
+            system_prompt, user_prompt, images=image_urls, mock_payload=mock_payload
         ):
             buffer += token
             yield _sse("token", {"t": token})
