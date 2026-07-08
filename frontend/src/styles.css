@@ -2,6 +2,58 @@
   box-sizing: border-box;
 }
 
+:root {
+  --app-bg: #0a0a0b;
+  --app-bg-deep: #050506;
+  --app-surface: #141416;
+  --app-surface-alt: #1b1b1f;
+  --app-panel: rgba(10, 10, 11, 0.6);
+  --app-panel-soft: rgba(10, 10, 11, 0.5);
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-border-strong: rgba(255, 255, 255, 0.1);
+  --app-text-primary: #f5f5f7;
+  --app-text-secondary: #8a8a93;
+  --app-text-muted: #6b6b73;
+  --app-conv-text: #b8b8c0;
+  --app-hover: rgba(255, 255, 255, 0.04);
+  --app-cite-bg: rgba(255, 255, 255, 0.03);
+  --app-shadow: rgba(0, 0, 0, 0.5);
+  --app-accent: #3b82f6;
+  --app-accent-light: #60a5fa;
+  --app-accent-soft: rgba(59, 130, 246, 0.14);
+  --app-accent-mid: rgba(59, 130, 246, 0.35);
+  --app-accent-glow: rgba(59, 130, 246, 0.6);
+  --app-summary-text: #d7e3ff;
+  --app-chip-text: #cfe0ff;
+  --risk-high: #ef4444;
+  --risk-medium: #f59e0b;
+  --risk-low: #3b82f6;
+  --risk-compliant: #22c55e;
+}
+
+:root[data-theme="light"] {
+  --app-bg: #f6f8fc;
+  --app-bg-deep: #eef3f9;
+  --app-surface: #ffffff;
+  --app-surface-alt: #eef3f9;
+  --app-panel: rgba(255, 255, 255, 0.88);
+  --app-panel-soft: rgba(255, 255, 255, 0.82);
+  --app-border: rgba(15, 23, 42, 0.12);
+  --app-border-strong: rgba(15, 23, 42, 0.16);
+  --app-text-primary: #172033;
+  --app-text-secondary: #6b7280;
+  --app-text-muted: #8a94a6;
+  --app-conv-text: #42526b;
+  --app-hover: rgba(15, 23, 42, 0.05);
+  --app-cite-bg: rgba(59, 130, 246, 0.06);
+  --app-shadow: rgba(15, 23, 42, 0.16);
+  --app-accent-soft: rgba(59, 130, 246, 0.1);
+  --app-accent-mid: rgba(59, 130, 246, 0.28);
+  --app-accent-glow: rgba(59, 130, 246, 0.32);
+  --app-summary-text: #1e3a8a;
+  --app-chip-text: #1d4ed8;
+}
+
 html,
 body,
 #root {
@@ -10,8 +62,8 @@ body,
 }
 
 body {
-  background: #0a0a0b;
-  color: #f5f5f7;
+  background: var(--app-bg);
+  color: var(--app-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -25,12 +77,12 @@ body {
   background:
     radial-gradient(
       1200px 500px at 50% -10%,
-      rgba(59, 130, 246, 0.18),
+      color-mix(in srgb, var(--app-accent) 18%, transparent),
       transparent 60%
     ),
     radial-gradient(
       800px 400px at 50% 0%,
-      rgba(96, 165, 250, 0.1),
+      color-mix(in srgb, var(--app-accent-light) 10%, transparent),
       transparent 55%
     );
   z-index: 0;
@@ -47,8 +99,8 @@ body {
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: rgba(10, 10, 11, 0.6);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-panel);
+  border-right: 1px solid var(--app-border);
   display: flex;
   flex-direction: column;
   padding: 16px 12px;
@@ -69,8 +121,8 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.6);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
+  box-shadow: 0 0 16px var(--app-accent-glow);
 }
 
 .conv-list {
@@ -85,7 +137,7 @@ body {
   padding: 10px 12px;
   border-radius: 10px;
   cursor: pointer;
-  color: #b8b8c0;
+  color: var(--app-conv-text);
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
@@ -95,13 +147,13 @@ body {
 }
 
 .conv-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-hover);
 }
 
 .conv-item.active {
-  background: rgba(59, 130, 246, 0.14);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #f5f5f7;
+  background: var(--app-accent-soft);
+  border-color: var(--app-accent-mid);
+  color: var(--app-text-primary);
 }
 
 /* 中栏 */
@@ -117,7 +169,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--app-border);
   gap: 12px;
 }
 
@@ -152,12 +204,12 @@ body {
 }
 
 .avatar.assistant {
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
 }
 
 .avatar.user {
-  background: #1b1b1f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--app-surface-alt);
+  border: 1px solid var(--app-border-strong);
 }
 
 .bubble {
@@ -170,29 +222,29 @@ body {
 }
 
 .bubble.assistant {
-  background: #141416;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
 }
 
 .bubble.user {
-  background: rgba(59, 130, 246, 0.16);
-  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent-mid);
 }
 
 .empty-hero {
   margin: auto;
   text-align: center;
-  color: #8a8a93;
+  color: var(--app-text-secondary);
 }
 
 .empty-hero h1 {
-  color: #f5f5f7;
+  color: var(--app-text-primary);
   font-size: 30px;
   font-weight: 700;
 }
 
 .empty-hero .accent {
-  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -200,12 +252,12 @@ body {
 
 .chat-input {
   padding: 14px 8% 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--app-border);
 }
 
 .input-shell {
-  background: #141416;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-strong);
   border-radius: 16px;
   padding: 10px 12px;
   display: flex;
@@ -214,8 +266,8 @@ body {
 }
 
 .input-shell:focus-within {
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: var(--app-accent-mid);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
 }
 
 .input-toolbar {
@@ -228,20 +280,20 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent-mid);
   border-radius: 8px;
   padding: 2px 8px;
   font-size: 12px;
-  color: #cfe0ff;
+  color: var(--app-chip-text);
 }
 
 /* 右栏 */
 .review-col {
   width: 380px;
   flex-shrink: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 10, 11, 0.5);
+  border-left: 1px solid var(--app-border);
+  background: var(--app-panel-soft);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -252,7 +304,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--app-border);
   font-weight: 600;
   gap: 8px;
 }
@@ -267,17 +319,17 @@ body {
 }
 
 .review-summary {
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: var(--app-accent-soft);
+  border: 1px solid var(--app-accent-mid);
   border-radius: 12px;
   padding: 12px 14px;
   font-size: 13px;
-  color: #d7e3ff;
+  color: var(--app-summary-text);
 }
 
 .risk-card {
-  background: #141416;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -296,20 +348,20 @@ body {
 
 .risk-field {
   font-size: 12.5px;
-  color: #b8b8c0;
+  color: var(--app-conv-text);
   margin: 6px 0;
   line-height: 1.6;
 }
 
 .risk-field b {
-  color: #e6e6ea;
+  color: var(--app-text-primary);
 }
 
 .cite {
   font-size: 11.5px;
-  color: #8a8a93;
-  background: rgba(255, 255, 255, 0.03);
-  border-left: 2px solid rgba(59, 130, 246, 0.5);
+  color: var(--app-text-secondary);
+  background: var(--app-cite-bg);
+  border-left: 2px solid var(--app-accent-mid);
   padding: 4px 8px;
   border-radius: 4px;
   margin-top: 4px;
@@ -317,7 +369,7 @@ body {
 
 .review-empty {
   margin: auto;
-  color: #6b6b73;
+  color: var(--app-text-muted);
   text-align: center;
   font-size: 13px;
 }
@@ -326,7 +378,7 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--app-border-strong);
   border-radius: 8px;
 }
 
@@ -342,9 +394,9 @@ body {
 
 .login-card {
   width: 380px;
-  background: #141416;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 18px;
   padding: 32px 28px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px var(--app-shadow);
 }

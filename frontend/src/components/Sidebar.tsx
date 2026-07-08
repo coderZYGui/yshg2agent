@@ -2,8 +2,10 @@ import {
   DeleteOutlined,
   FileTextOutlined,
   LogoutOutlined,
+  MoonOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
+  SunOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
 import { Button, Modal, Segmented, Tag, Tooltip, Upload, message } from "antd";
@@ -25,8 +27,16 @@ const roleOptions = [
 ];
 
 export default function Sidebar() {
-  const { role, setRole, username, logout, newConversation, conversationId } =
-    useStore();
+  const {
+    role,
+    setRole,
+    username,
+    logout,
+    newConversation,
+    conversationId,
+    themeMode,
+    setThemeMode,
+  } = useStore();
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [kbOpen, setKbOpen] = useState(false);
   const [kb, setKb] = useState<DocumentItem[]>([]);
@@ -48,7 +58,7 @@ export default function Sidebar() {
   const handleUpload = async (file: File) => {
     try {
       await uploadKnowledge(file);
-      message.success(`已入库: ${file.name}`);
+      message.success(`已入库 ${file.name}`);
       refreshKb();
     } catch {
       message.error("入库失败");
@@ -61,6 +71,15 @@ export default function Sidebar() {
       <div className="brand">
         <span className="brand-dot" />
         <span>隐私合规评审</span>
+        <div style={{ flex: 1 }} />
+        <Tooltip title={themeMode === "dark" ? "切换浅色" : "切换深色"}>
+          <Button
+            type="text"
+            size="small"
+            icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+            onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+          />
+        </Tooltip>
       </div>
 
       <div>
@@ -84,7 +103,9 @@ export default function Sidebar() {
       </div>
       <div className="conv-list">
         {convs.length === 0 && (
-          <div style={{ fontSize: 12, color: "#5b5b63", padding: 8 }}>暂无会话</div>
+          <div style={{ fontSize: 12, color: colors.textSecondary, padding: 8 }}>
+            暂无会话
+          </div>
         )}
         {convs.map((c) => (
           <div key={c.id} className={`conv-item ${c.id === conversationId ? "active" : ""}`}>
@@ -116,7 +137,7 @@ export default function Sidebar() {
           color: colors.textSecondary,
         }}
       >
-        <span>👤 {username}</span>
+        <span>{username}</span>
         <Tooltip title="退出登录">
           <Button type="text" size="small" icon={<LogoutOutlined />} onClick={logout} />
         </Tooltip>
@@ -131,7 +152,7 @@ export default function Sidebar() {
       >
         <Upload beforeUpload={(f) => handleUpload(f as File)} showUploadList={false} multiple>
           <Button icon={<UploadOutlined />} type="primary" style={{ marginBottom: 12 }}>
-            上传知识库文档 (Word/PDF/PPT/Excel/Markdown)
+            上传知识库文档（Word/PDF/PPT/Excel/Markdown）
           </Button>
         </Upload>
         <div style={{ maxHeight: 360, overflowY: "auto" }}>

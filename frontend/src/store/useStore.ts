@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ThemeMode } from "../theme";
 import type { ChatMessage, DocumentItem, ReviewResult, RoleKey } from "../types";
 
 interface AppState {
@@ -11,6 +12,7 @@ interface AppState {
   activeReview: ReviewResult | null;
   attachments: DocumentItem[];
   sending: boolean;
+  themeMode: ThemeMode;
 
   setAuth: (token: string, username: string, role: RoleKey) => void;
   logout: () => void;
@@ -24,6 +26,7 @@ interface AppState {
   addAttachment: (d: DocumentItem) => void;
   clearAttachments: () => void;
   setSending: (v: boolean) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   newConversation: () => void;
 }
 
@@ -37,6 +40,7 @@ export const useStore = create<AppState>((set) => ({
   activeReview: null,
   attachments: [],
   sending: false,
+  themeMode: (localStorage.getItem("themeMode") as ThemeMode) || "dark",
 
   setAuth: (token, username, role) => {
     localStorage.setItem("token", token);
@@ -81,6 +85,10 @@ export const useStore = create<AppState>((set) => ({
   addAttachment: (d) => set((s) => ({ attachments: [...s.attachments, d] })),
   clearAttachments: () => set({ attachments: [] }),
   setSending: (v) => set({ sending: v }),
+  setThemeMode: (themeMode) => {
+    localStorage.setItem("themeMode", themeMode);
+    set({ themeMode });
+  },
   newConversation: () =>
     set({ conversationId: null, messages: [], activeReview: null, attachments: [] }),
 }));
