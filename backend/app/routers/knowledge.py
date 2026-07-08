@@ -5,7 +5,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import AuditLog, Document, User
 from ..schemas import DocumentOut
-from ..services import knowledge_index, parser, rag, storage
+from ..services import storage
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
@@ -40,10 +40,8 @@ async def add_knowledge(
     db.commit()
     db.refresh(doc)
 
-    text = parser.parse_document(path, doc.mime)
-    doc.summary = text[:280]
-    n_chunks = rag.ingest_document(db, doc, text)
-    doc.parse_status = "done" if n_chunks else "empty"
+    doc.summary = "百炼知识库请在阿里云百炼控制台维护；本地仅保存上传记录。"
+    doc.parse_status = "done"
     db.add(AuditLog(user_id=user.id, action="add_knowledge", target=doc.filename))
     db.commit()
     db.refresh(doc)
@@ -59,7 +57,6 @@ def delete_knowledge(
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="知识库文档不存在")
-    knowledge_index.delete_document(doc.id)
     db.delete(doc)
     db.add(AuditLog(user_id=user.id, action="delete_knowledge", target=doc.filename))
     db.commit()

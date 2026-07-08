@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     dashscope_api_key: str = ""
     dashscope_app_id: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/api/v1"
+    dashscope_file_upload_url: str = ""
 
     embedding_api_key: str = ""
     embedding_base_url: str = ""

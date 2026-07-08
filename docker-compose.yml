@@ -9,6 +9,7 @@ services:
       DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-}"
       DASHSCOPE_APP_ID: "${DASHSCOPE_APP_ID:-}"
       DASHSCOPE_BASE_URL: "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/api/v1}"
+      DASHSCOPE_FILE_UPLOAD_URL: "${DASHSCOPE_FILE_UPLOAD_URL:-}"
       EMBEDDING_API_KEY: "${EMBEDDING_API_KEY:-}"
       CORS_ORIGINS: http://localhost:8080,http://localhost:5173
     volumes:

@@ -12,11 +12,15 @@ from ..database import SessionLocal, get_db
 from ..deps import get_current_user
 from ..models import Conversation, Document, Message, User
 from ..schemas import ChatRequest
-from ..services import llm, rag
-from ..services.prompts import build_system_prompt, build_user_prompt
-from ..services.redaction import redact
+from ..services import llm
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+ROLE_LABELS = {
+    "pm": "产品经理",
+    "qa": "测试开发工程师",
+    "legal": "法务",
+}
 
 
 def _sse(event: str, data: dict | str) -> str:
@@ -35,20 +39,73 @@ def _extract_json(text: str) -> dict | None:
         return None
 
 
-def _image_data_urls(db: Session, document_ids: list[int]) -> list[str]:
+def _attachment_docs(db: Session, document_ids: list[int]) -> list[dict]:
     if not document_ids:
         return []
 
     docs = db.query(Document).filter(Document.id.in_(document_ids)).all()
+    payloads = []
+    for doc in docs:
+        mime = doc.mime or mimetypes.guess_type(doc.filename)[0] or ""
+        payloads.append(
+            {
+                "id": doc.id,
+                "filename": doc.filename,
+                "mime": mime,
+                "storage_path": doc.storage_path,
+                "is_image": mime.startswith("image/"),
+            }
+        )
+    return payloads
+
+
+def _image_data_urls(docs: list[dict]) -> list[str]:
     urls = []
     for doc in docs:
-        path = Path(doc.storage_path)
-        mime = doc.mime or mimetypes.guess_type(doc.filename)[0] or ""
-        if not mime.startswith("image/") or not path.exists():
+        if not doc["is_image"]:
+            continue
+        path = Path(doc["storage_path"])
+        if not path.exists():
             continue
         data = base64.b64encode(path.read_bytes()).decode("ascii")
-        urls.append(f"data:{mime};base64,{data}")
+        urls.append(f"data:{doc['mime']};base64,{data}")
     return urls
+
+
+def _build_bailian_prompt(role: str, message: str, docs: list[dict]) -> str:
+    role_label = ROLE_LABELS.get(role, ROLE_LABELS["pm"])
+    attachment_names = [doc["filename"] for doc in docs]
+    parts = [
+        f"当前用户角色：{role_label}",
+        f"用户问题：{message}",
+    ]
+    if attachment_names:
+        parts.append("用户已上传附件：" + "、".join(attachment_names))
+    parts.append(
+        "请直接基于百炼应用内已配置的隐私合规知识库，以及本次问题和附件内容进行分析。"
+        "如果有图片附件，请识别图片中的隐私合规风险。"
+        "优先快速输出结论，再输出完整的风险点、合规判定、整改建议和引用依据。"
+    )
+    return "\n".join(parts)
+
+
+async def _upload_session_files(docs: list[dict]) -> list[str]:
+    file_ids = []
+    for doc in docs:
+        if doc["is_image"]:
+            continue
+        path = Path(doc["storage_path"])
+        if not path.exists():
+            continue
+        try:
+            file_id = await llm.upload_session_file(
+                str(path), doc["filename"], doc["mime"]
+            )
+        except Exception:
+            file_id = None
+        if file_id:
+            file_ids.append(file_id)
+    return file_ids
 
 
 @router.post("/stream")
@@ -57,62 +114,70 @@ async def chat_stream(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    # 会话
     conv: Conversation | None = None
     if req.conversation_id:
-        conv = db.query(Conversation).filter(
-            Conversation.id == req.conversation_id, Conversation.user_id == user.id
-        ).first()
+        conv = (
+            db.query(Conversation)
+            .filter(Conversation.id == req.conversation_id, Conversation.user_id == user.id)
+            .first()
+        )
     if conv is None:
-        conv = Conversation(user_id=user.id, title=req.message[:20] or "新会话", role=req.role)
+        conv = Conversation(
+            user_id=user.id, title=req.message[:20] or "新会话", role=req.role
+        )
         db.add(conv)
         db.commit()
         db.refresh(conv)
 
     conv_id = conv.id
+    docs = _attachment_docs(db, req.document_ids)
+    image_urls = _image_data_urls(docs)
+    user_prompt = _build_bailian_prompt(req.role, req.message, docs)
 
-    # 保存用户消息
-    db.add(Message(conversation_id=conv_id, role="user", content=req.message,
-                   attachments=req.document_ids))
+    db.add(
+        Message(
+            conversation_id=conv_id,
+            role="user",
+            content=req.message,
+            attachments=req.document_ids,
+        )
+    )
     db.commit()
-
-    # 检索 + 组装(在请求线程内完成, 结果传入生成器)
-    safe_query, _ = redact(req.message)
-    results = rag.retrieve(db, safe_query, top_k=5)
-    context = rag.build_context(results)
-    doc_text = rag.collect_document_text(db, req.document_ids)
-    safe_doc, _ = redact(doc_text)
-    image_urls = _image_data_urls(db, req.document_ids)
-
-    system_prompt = build_system_prompt(req.role)
-    user_prompt = build_user_prompt(safe_query, context, safe_doc)
 
     mock_payload = {
         "question": req.message,
         "has_doc": bool(req.document_ids),
-        "citations": [
-            {"document": r["document"], "snippet": r["text"], "score": r["score"]}
-            for r in results
-        ],
     }
 
     async def event_gen() -> AsyncIterator[str]:
-        yield _sse("meta", {"conversation_id": conv_id, "retrieved": len(results)})
+        yield _sse(
+            "meta",
+            {
+                "conversation_id": conv_id,
+                "attachments": len(docs),
+                "images": len(image_urls),
+            },
+        )
+
+        session_file_ids = await _upload_session_files(docs)
 
         buffer = ""
         async for token in llm.stream_chat(
-            system_prompt, user_prompt, images=image_urls, mock_payload=mock_payload
+            "",
+            user_prompt,
+            images=image_urls,
+            session_file_ids=session_file_ids,
+            mock_payload=mock_payload,
         ):
             buffer += token
             yield _sse("token", {"t": token})
 
         review = _extract_json(buffer) or {
-            "summary": buffer[:200],
+            "summary": buffer,
             "items": [],
         }
         summary = review.get("summary", "")
 
-        # 独立 session 写库(避免与请求 session 生命周期冲突)
         with SessionLocal() as wdb:
             wdb.add(
                 Message(

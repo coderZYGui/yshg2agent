@@ -52,7 +52,7 @@ export async function uploadDocument(file: File, kind = "review") {
 }
 
 export interface StreamHandlers {
-  onMeta?: (m: { conversation_id: number; retrieved: number }) => void;
+  onMeta?: (m: { conversation_id: number; attachments?: number; images?: number }) => void;
   onToken?: (t: string) => void;
   onReview?: (r: ReviewResult) => void;
   onDone?: (d: { conversation_id: number }) => void;

@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from .auth import hash_password
 from .models import Document, User
-from .services import rag
 
 DEMO_USERS = [
     ("pm", "pm123", "pm"),
@@ -63,4 +62,3 @@ def seed(db: Session) -> None:
             db.add(doc)
             db.commit()
             db.refresh(doc)
-            rag.ingest_document(db, doc, content)

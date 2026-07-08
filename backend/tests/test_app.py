@@ -1,5 +1,7 @@
 import json
 
+from app.database import SessionLocal
+from app.models import Chunk
 from app.services import llm, parser
 from app.services.redaction import redact
 
@@ -104,3 +106,18 @@ def test_knowledge_upload_and_retrieve(client, auth_headers):
     resp = client.post("/api/knowledge", files=files, headers=auth_headers)
     assert resp.status_code == 200
     assert resp.json()["parse_status"] == "done"
+
+
+def test_document_upload_does_not_create_local_chunks(client, auth_headers):
+    files = {"file": ("prd.md", b"# PRD\ncollect contacts", "text/markdown")}
+    resp = client.post(
+        "/api/documents/upload",
+        data={"kind": "review"},
+        files=files,
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    doc_id = resp.json()["id"]
+
+    with SessionLocal() as db:
+        assert db.query(Chunk).filter(Chunk.document_id == doc_id).count() == 0

@@ -5,7 +5,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import AuditLog, Document, User
 from ..schemas import DocumentOut
-from ..services import parser, rag, storage
+from ..services import storage
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -35,11 +35,8 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    # Synchronous parsing keeps the local-first MVP simple.
-    text = parser.parse_document(path, doc.mime)
-    doc.summary = text[:280]
-    n_chunks = rag.ingest_document(db, doc, text)
-    doc.parse_status = "done" if n_chunks or text else "empty"
+    doc.summary = "已上传，聊天时将直接转发给百炼应用处理。"
+    doc.parse_status = "done"
     db.add(AuditLog(user_id=user.id, action="upload_document", target=doc.filename))
     db.commit()
     db.refresh(doc)

@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import httpx
 
@@ -12,6 +13,7 @@ async def stream_chat(
     system_prompt: str,
     user_prompt: str,
     images: list[str] | None = None,
+    session_file_ids: list[str] | None = None,
     mock_payload: dict | None = None,
 ) -> AsyncIterator[str]:
     if settings.llm_is_mock:
@@ -19,11 +21,47 @@ async def stream_chat(
             yield tok
         return
     if settings.llm_provider == "dashscope_app":
-        async for tok in _dashscope_app_stream(system_prompt, user_prompt, images):
+        async for tok in _dashscope_app_stream(
+            system_prompt, user_prompt, images, session_file_ids
+        ):
             yield tok
         return
     async for tok in _minimax_stream(system_prompt, user_prompt, images):
         yield tok
+
+
+async def upload_session_file(path: str, filename: str, mime: str = "") -> str | None:
+    if settings.llm_is_mock or not settings.dashscope_api_key:
+        return None
+
+    url = settings.dashscope_file_upload_url or (
+        f"{settings.dashscope_base_url.rstrip('/')}/files"
+    )
+    headers = {"Authorization": f"Bearer {settings.dashscope_api_key}"}
+    file_path = Path(path)
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        with file_path.open("rb") as f:
+            resp = await client.post(
+                url,
+                headers=headers,
+                data={"purpose": "file-extract", "descriptions": filename},
+                files={
+                    "files": (
+                        filename,
+                        f,
+                        mime or "application/octet-stream",
+                    )
+                },
+            )
+        resp.raise_for_status()
+
+    data = resp.json()
+    uploaded = data.get("data", {}).get("uploaded_files", [])
+    if not uploaded:
+        return None
+    file_id = uploaded[0].get("file_id")
+    return file_id if isinstance(file_id, str) else None
 
 
 def _join_prompts(system_prompt: str, user_prompt: str) -> str:
@@ -48,15 +86,24 @@ def _dashscope_text(obj: dict) -> str:
 
 
 async def _dashscope_app_stream(
-    system_prompt: str, user_prompt: str, images: list[str] | None
+    system_prompt: str,
+    user_prompt: str,
+    images: list[str] | None,
+    session_file_ids: list[str] | None,
 ) -> AsyncIterator[str]:
     input_payload: dict = {"prompt": _join_prompts(system_prompt, user_prompt)}
     if images:
         input_payload["image_list"] = images
+    if session_file_ids:
+        input_payload["session_file_ids"] = session_file_ids
 
     payload = {
         "input": input_payload,
-        "parameters": {"incremental_output": True},
+        "parameters": {
+            "incremental_output": True,
+            "has_thoughts": False,
+            "enable_thinking": False,
+        },
         "debug": {},
     }
     headers = {
@@ -69,7 +116,7 @@ async def _dashscope_app_stream(
         f"{settings.dashscope_app_id}/completion"
     )
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=180) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
@@ -130,51 +177,18 @@ async def _minimax_stream(
 
 async def _mock_stream(payload: dict) -> AsyncIterator[str]:
     question: str = payload.get("question", "")
-    citations: list[dict] = payload.get("citations", [])
     has_doc: bool = payload.get("has_doc", False)
 
-    cites = [
+    items = [
         {
-            "document": c.get("document", "知识库"),
-            "snippet": c.get("snippet", "")[:80],
-            "score": round(c.get("score", 0.0), 3),
+            "risk_level": "medium",
+            "location": "附件或描述内容" if has_doc else f"咨询问题: {question[:30]}",
+            "verdict": "Mock 模式未调用百炼，仅用于本地联调。",
+            "suggestion": "配置 DASHSCOPE_API_KEY 与 DASHSCOPE_APP_ID 后将调用百炼应用。",
+            "citations": [],
         }
-        for c in citations[:2]
     ]
-
-    items = []
-    if citations:
-        items.append(
-            {
-                "risk_level": "medium",
-                "location": "个人信息收集环节" if has_doc else f"咨询问题: {question[:30]}",
-                "verdict": "根据知识库中的隐私合规要求, 需确认是否遵循最小必要原则并取得明示同意。",
-                "suggestion": "补充数据收集清单与用途说明, 在采集前提供独立的同意勾选项, 避免默认勾选。",
-                "citations": cites,
-            }
-        )
-        items.append(
-            {
-                "risk_level": "low",
-                "location": "数据存储与传输",
-                "verdict": "敏感个人信息需加密存储与传输。",
-                "suggestion": "对敏感字段启用加密, 传输链路使用 TLS, 并做好访问审计。",
-                "citations": cites[:1],
-            }
-        )
-        summary = f"[Mock 模式] 已比对知识库 {len(citations)} 个相关片段, 识别到 {len(items)} 项待关注的隐私合规风险。"
-    else:
-        items.append(
-            {
-                "risk_level": "compliant",
-                "location": "-",
-                "verdict": "当前知识库中未检索到与该问题直接相关的合规依据。",
-                "suggestion": "请先在知识库中上传相关隐私合规文档, 或补充更具体的问题描述。",
-                "citations": [],
-            }
-        )
-        summary = "[Mock 模式] 未检索到相关知识库依据, 建议补充资料后重试。"
-
+    summary = "[Mock 模式] 当前未配置百炼应用，已返回本地演示结果。"
     result = {"summary": summary, "items": items}
     text = json.dumps(result, ensure_ascii=False)
     step = 24
