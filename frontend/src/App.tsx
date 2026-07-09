@@ -3,7 +3,6 @@ import zhCN from "antd/locale/zh_CN";
 import { useEffect, useState } from "react";
 import { login } from "./api/client";
 import ChatPanel from "./components/ChatPanel";
-import ReviewPanel from "./components/ReviewPanel";
 import Sidebar from "./components/Sidebar";
 import { useStore } from "./store/useStore";
 import { getAntdTheme } from "./theme";
@@ -12,7 +11,6 @@ import type { RoleKey } from "./types";
 export default function App() {
   const token = useStore((s) => s.token);
   const setAuth = useStore((s) => s.setAuth);
-  const activeReview = useStore((s) => s.activeReview);
   const themeMode = useStore((s) => s.themeMode);
   const [autoLoginError, setAutoLoginError] = useState("");
 
@@ -52,7 +50,6 @@ export default function App() {
         <div className="app-shell">
           <Sidebar />
           <ChatPanel />
-          <ReviewPanel review={activeReview} />
         </div>
       )}
     </ConfigProvider>

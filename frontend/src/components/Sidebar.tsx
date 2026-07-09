@@ -8,10 +8,12 @@ import {
   SunOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { Button, Modal, Segmented, Tag, Tooltip, Upload, message } from "antd";
+import { Button, Dropdown, Modal, Segmented, Tag, Tooltip, Upload, message } from "antd";
 import { useEffect, useState } from "react";
 import {
+  deleteConversation,
   deleteKnowledge,
+  getConversationMessages,
   listConversations,
   listKnowledge,
   uploadKnowledge,
@@ -33,6 +35,7 @@ export default function Sidebar() {
     username,
     logout,
     newConversation,
+    setConversationMessages,
     conversationId,
     themeMode,
     setThemeMode,
@@ -49,6 +52,45 @@ export default function Sidebar() {
       .then(setKb)
       .catch(() => {})
       .finally(() => setLoadingKb(false));
+  };
+
+  const openConversation = async (id: number) => {
+    try {
+      const rows = await getConversationMessages(id);
+      const messages = rows.map((m) => ({
+        id: String(m.id),
+        role: m.role,
+        content: m.content,
+        review: m.review_result ?? undefined,
+      }));
+      const activeReview =
+        [...rows].reverse().find((m) => m.role === "assistant" && m.review_result)
+          ?.review_result ?? null;
+      setConversationMessages(id, messages, activeReview);
+    } catch {
+      message.error("鍔犺浇浼氳瘽澶辫触");
+    }
+  };
+
+  const removeConversation = (conv: Conversation) => {
+    Modal.confirm({
+      title: "删除历史会话",
+      content: `确定删除「${conv.title}」吗？删除后不可恢复。`,
+      okText: "删除",
+      okButtonProps: { danger: true },
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await deleteConversation(conv.id);
+          setConvs((items) => items.filter((item) => item.id !== conv.id));
+          if (conversationId === conv.id) newConversation();
+          message.success("已删除会话");
+        } catch (error) {
+          message.error("删除会话失败，请确认后端服务已重启");
+          throw error;
+        }
+      },
+    });
   };
 
   useEffect(() => {
@@ -108,10 +150,34 @@ export default function Sidebar() {
           </div>
         )}
         {convs.map((c) => (
-          <div key={c.id} className={`conv-item ${c.id === conversationId ? "active" : ""}`}>
-            <FileTextOutlined style={{ marginRight: 8 }} />
-            {c.title}
-          </div>
+          <Dropdown
+            key={c.id}
+            trigger={["contextMenu"]}
+            menu={{
+              items: [
+                {
+                  key: "delete",
+                  danger: true,
+                  icon: <DeleteOutlined />,
+                  label: "删除会话",
+                },
+              ],
+              onClick: () => removeConversation(c),
+            }}
+          >
+            <div
+              className={`conv-item ${c.id === conversationId ? "active" : ""}`}
+              onClick={() => openConversation(c.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") openConversation(c.id);
+              }}
+            >
+              <FileTextOutlined style={{ marginRight: 8 }} />
+              {c.title}
+            </div>
+          </Dropdown>
         ))}
       </div>
 

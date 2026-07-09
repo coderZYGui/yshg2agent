@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Conversation, DocumentItem, ReviewResult } from "../types";
+import type { Conversation, ConversationMessage, DocumentItem, ReviewResult } from "../types";
 
 const api = axios.create({ baseURL: "/api" });
 
@@ -25,6 +25,15 @@ export async function register(username: string, password: string, role: string)
 export async function listConversations() {
   const { data } = await api.get("/conversations");
   return data as Conversation[];
+}
+
+export async function getConversationMessages(id: number) {
+  const { data } = await api.get(`/conversations/${id}/messages`);
+  return data as ConversationMessage[];
+}
+
+export async function deleteConversation(id: number) {
+  await api.delete(`/conversations/${id}`);
 }
 
 export async function listKnowledge() {

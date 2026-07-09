@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -34,6 +34,20 @@ def create_conversation(
     return conv
 
 
+@router.delete("/{conv_id}", status_code=204)
+def delete_conversation(
+    conv_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    conv = db.query(Conversation).filter(
+        Conversation.id == conv_id, Conversation.user_id == user.id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    db.delete(conv)
+    db.commit()
+    return Response(status_code=204)
+
+
 @router.get("/{conv_id}/messages", response_model=list[MessageOut])
 def get_messages(
     conv_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
@@ -42,7 +56,7 @@ def get_messages(
         Conversation.id == conv_id, Conversation.user_id == user.id
     ).first()
     if not conv:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise HTTPException(status_code=404, detail="Conversation not found")
     return (
         db.query(Message)
         .filter(Message.conversation_id == conv_id)

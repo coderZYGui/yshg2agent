@@ -19,6 +19,11 @@ interface AppState {
   setRole: (role: RoleKey) => void;
 
   setConversationId: (id: number | null) => void;
+  setConversationMessages: (
+    id: number,
+    messages: ChatMessage[],
+    activeReview: ReviewResult | null
+  ) => void;
   addMessage: (m: ChatMessage) => void;
   updateLastAssistant: (patch: Partial<ChatMessage>) => void;
   appendToLastAssistant: (text: string) => void;
@@ -58,6 +63,8 @@ export const useStore = create<AppState>((set) => ({
   },
 
   setConversationId: (id) => set({ conversationId: id }),
+  setConversationMessages: (id, messages, activeReview) =>
+    set({ conversationId: id, messages, activeReview, attachments: [] }),
   addMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),
   updateLastAssistant: (patch) =>
     set((s) => {
