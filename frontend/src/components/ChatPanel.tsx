@@ -13,6 +13,7 @@ import { chatStream, uploadDocument } from "../api/client";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
 import type { ChatMessage, ReviewResult } from "../types";
+import { stripReferenceTags } from "../utils/stripReferences";
 
 const roleTitle: Record<string, string> = {
   pm: "产品经理 · 隐私风险评审",
@@ -63,7 +64,9 @@ function Bubble({ msg }: { msg: ChatMessage }) {
       <div className={`bubble ${isUser ? "user" : "assistant"}`}>
         {msg.content ? (
           <>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {stripReferenceTags(msg.content)}
+            </ReactMarkdown>
             {msg.streaming && (
               <span style={{ color: colors.accent, marginLeft: 3 }} aria-hidden="true">
                 ▍
