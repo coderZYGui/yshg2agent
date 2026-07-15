@@ -6,6 +6,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Button, Input, Tag, Upload, message as antdMessage } from "antd";
+import type { ClipboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,6 +14,7 @@ import { chatStream, uploadDocument } from "../api/client";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
 import type { ChatMessage, ReviewResult } from "../types";
+import { getPastedFiles } from "../utils/getPastedFiles";
 import { stripReferenceTags } from "../utils/stripReferences";
 
 const roleTitle: Record<string, string> = {
@@ -115,6 +117,16 @@ export default function ChatPanel() {
     return false;
   };
 
+  const handlePaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = getPastedFiles(event.clipboardData.items);
+    if (!files.length) return;
+
+    event.preventDefault();
+    for (const file of files) {
+      await handleAttach(file);
+    }
+  };
+
   const send = async () => {
     if (!text.trim() || sending) return;
     const userText = text.trim();
@@ -189,6 +201,7 @@ export default function ChatPanel() {
             placeholder="描述你的评审诉求，或上传文档后提问…（Enter 发送）"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onPaste={handlePaste}
             onPressEnter={(e) => {
               if (!e.shiftKey) {
                 e.preventDefault();
