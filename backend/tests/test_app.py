@@ -26,7 +26,7 @@ def test_register_login_me(client):
     token = resp.json()["access_token"]
     me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json()["role"] == "legal"
+    assert me.json()["role"] == "pm"
 
 
 def test_wrong_password(client):
@@ -44,6 +44,11 @@ def test_seeded_knowledge(client, auth_headers):
     resp = client.get("/api/knowledge", headers=auth_headers)
     assert resp.status_code == 200
     assert len(resp.json()) >= 4  # 内置知识库样本
+
+
+def test_conversations_are_available_without_bearer_token(client):
+    resp = client.get("/api/conversations")
+    assert resp.status_code == 200
 
 
 def test_chunk_text():
