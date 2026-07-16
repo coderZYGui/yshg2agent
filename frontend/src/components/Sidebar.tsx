@@ -1,10 +1,11 @@
 import {
+  BgColorsOutlined,
+  CheckOutlined,
   DeleteOutlined,
   FileTextOutlined,
   LogoutOutlined,
-  MoonOutlined,
   PlusOutlined,
-  SunOutlined,
+  SafetyCertificateFilled,
 } from "@ant-design/icons";
 import { Button, Dropdown, Modal, Segmented, Tooltip, message } from "antd";
 import { useEffect, useState } from "react";
@@ -22,6 +23,12 @@ const roleOptions = [
   { label: "测试", value: "qa" },
   { label: "法务", value: "legal" },
 ];
+
+const toneOptions = [
+  { key: "editorial", label: "暖米青", color: "#087F73" },
+  { key: "precision", label: "明净蓝", color: "#2563EB" },
+  { key: "night", label: "深海蓝", color: "#07111F" },
+] as const;
 
 export default function Sidebar() {
   const {
@@ -85,17 +92,42 @@ export default function Sidebar() {
   return (
     <div className="sidebar">
       <div className="brand">
-        <span className="brand-dot" />
-        <span>隐私合规评审</span>
+        <span className="brand-mark" aria-hidden="true">
+          <SafetyCertificateFilled />
+        </span>
+        <span className="brand-title">隐私合规评审</span>
         <div style={{ flex: 1 }} />
-        <Tooltip title={themeMode === "dark" ? "切换浅色" : "切换深色"}>
-          <Button
-            type="text"
-            size="small"
-            icon={themeMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-            onClick={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
-          />
-        </Tooltip>
+        <Dropdown
+          trigger={["click"]}
+          placement="bottomRight"
+          menu={{
+            selectable: true,
+            selectedKeys: [themeMode],
+            items: toneOptions.map((tone) => ({
+              key: tone.key,
+              icon: <span className="tone-dot" style={{ background: tone.color }} />,
+              label: (
+                <span className="tone-option-label">
+                  <span>{tone.label}</span>
+                  {tone.key === themeMode && <CheckOutlined />}
+                </span>
+              ),
+            })),
+            onClick: ({ key }) => setThemeMode(key as typeof themeMode),
+          }}
+        >
+          <Tooltip title="切换页面色调">
+            <Button
+              className="tone-trigger"
+              type="default"
+              size="small"
+              icon={<BgColorsOutlined />}
+              aria-label="切换页面色调"
+            >
+              色调
+            </Button>
+          </Tooltip>
+        </Dropdown>
       </div>
 
       <div>

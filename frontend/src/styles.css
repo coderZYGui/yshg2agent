@@ -3,55 +3,85 @@
 }
 
 :root {
-  --app-bg: #0a0a0b;
-  --app-bg-deep: #050506;
-  --app-surface: #141416;
-  --app-surface-alt: #1b1b1f;
-  --app-panel: rgba(10, 10, 11, 0.6);
-  --app-panel-soft: rgba(10, 10, 11, 0.5);
-  --app-border: rgba(255, 255, 255, 0.08);
-  --app-border-strong: rgba(255, 255, 255, 0.1);
-  --app-text-primary: #f5f5f7;
-  --app-text-secondary: #8a8a93;
-  --app-text-muted: #6b6b73;
-  --app-conv-text: #b8b8c0;
-  --app-hover: rgba(255, 255, 255, 0.04);
-  --app-cite-bg: rgba(255, 255, 255, 0.03);
-  --app-shadow: rgba(0, 0, 0, 0.5);
-  --app-accent: #3b82f6;
+  --app-bg: #f6f8fc;
+  --app-bg-deep: #eef3f9;
+  --app-surface: #ffffff;
+  --app-surface-alt: #eef3f9;
+  --app-panel: rgba(255, 255, 255, 0.92);
+  --app-panel-soft: rgba(255, 255, 255, 0.86);
+  --app-border: rgba(15, 23, 42, 0.11);
+  --app-border-strong: rgba(15, 23, 42, 0.16);
+  --app-text-primary: #172033;
+  --app-text-secondary: #64748b;
+  --app-text-muted: #8a94a6;
+  --app-conv-text: #42526b;
+  --app-hover: rgba(37, 99, 235, 0.06);
+  --app-cite-bg: rgba(37, 99, 235, 0.06);
+  --app-shadow: rgba(15, 23, 42, 0.14);
+  --app-accent: #2563eb;
   --app-accent-light: #60a5fa;
-  --app-accent-soft: rgba(59, 130, 246, 0.14);
-  --app-accent-mid: rgba(59, 130, 246, 0.35);
-  --app-accent-glow: rgba(59, 130, 246, 0.6);
-  --app-summary-text: #d7e3ff;
-  --app-chip-text: #cfe0ff;
+  --app-accent-soft: rgba(37, 99, 235, 0.1);
+  --app-accent-mid: rgba(37, 99, 235, 0.28);
+  --app-accent-glow: rgba(37, 99, 235, 0.2);
+  --app-summary-text: #1e3a8a;
+  --app-chip-text: #1d4ed8;
+  --app-heading-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
   --risk-high: #ef4444;
   --risk-medium: #f59e0b;
   --risk-low: #3b82f6;
   --risk-compliant: #22c55e;
 }
 
-:root[data-theme="light"] {
-  --app-bg: #f6f8fc;
-  --app-bg-deep: #eef3f9;
-  --app-surface: #ffffff;
-  --app-surface-alt: #eef3f9;
-  --app-panel: rgba(255, 255, 255, 0.88);
-  --app-panel-soft: rgba(255, 255, 255, 0.82);
+:root[data-theme="editorial"] {
+  --app-bg: #f5f1e8;
+  --app-bg-deep: #ece6da;
+  --app-surface: #fffcf5;
+  --app-surface-alt: #ece6da;
+  --app-panel: rgba(255, 252, 245, 0.94);
+  --app-panel-soft: rgba(255, 252, 245, 0.88);
   --app-border: rgba(15, 23, 42, 0.12);
   --app-border-strong: rgba(15, 23, 42, 0.16);
-  --app-text-primary: #172033;
-  --app-text-secondary: #6b7280;
-  --app-text-muted: #8a94a6;
-  --app-conv-text: #42526b;
-  --app-hover: rgba(15, 23, 42, 0.05);
-  --app-cite-bg: rgba(59, 130, 246, 0.06);
-  --app-shadow: rgba(15, 23, 42, 0.16);
-  --app-accent-soft: rgba(59, 130, 246, 0.1);
-  --app-accent-mid: rgba(59, 130, 246, 0.28);
-  --app-accent-glow: rgba(59, 130, 246, 0.32);
-  --app-summary-text: #1e3a8a;
-  --app-chip-text: #1d4ed8;
+  --app-text-primary: #17312e;
+  --app-text-secondary: #66736f;
+  --app-text-muted: #89928e;
+  --app-conv-text: #405a55;
+  --app-hover: rgba(8, 127, 115, 0.06);
+  --app-cite-bg: rgba(8, 127, 115, 0.06);
+  --app-shadow: rgba(38, 55, 51, 0.14);
+  --app-accent: #087f73;
+  --app-accent-light: #26a69a;
+  --app-accent-soft: rgba(8, 127, 115, 0.1);
+  --app-accent-mid: rgba(8, 127, 115, 0.3);
+  --app-accent-glow: rgba(8, 127, 115, 0.18);
+  --app-summary-text: #0b5c54;
+  --app-chip-text: #087267;
+  --app-heading-font: Georgia, "Songti SC", "SimSun", serif;
+}
+
+:root[data-theme="night"] {
+  --app-bg: #07111f;
+  --app-bg-deep: #030a13;
+  --app-surface: #0d1726;
+  --app-surface-alt: #142238;
+  --app-panel: rgba(5, 13, 24, 0.94);
+  --app-panel-soft: rgba(7, 17, 31, 0.9);
+  --app-border: rgba(148, 163, 184, 0.16);
+  --app-border-strong: rgba(148, 163, 184, 0.24);
+  --app-text-primary: #f8fafc;
+  --app-text-secondary: #94a3b8;
+  --app-text-muted: #64748b;
+  --app-conv-text: #cbd5e1;
+  --app-hover: rgba(96, 165, 250, 0.08);
+  --app-cite-bg: rgba(96, 165, 250, 0.07);
+  --app-shadow: rgba(0, 0, 0, 0.48);
+  --app-accent: #3b82f6;
+  --app-accent-light: #60a5fa;
+  --app-accent-soft: rgba(59, 130, 246, 0.14);
+  --app-accent-mid: rgba(59, 130, 246, 0.36);
+  --app-accent-glow: rgba(59, 130, 246, 0.3);
+  --app-summary-text: #dbeafe;
+  --app-chip-text: #bfdbfe;
 }
 
 html,
@@ -69,22 +99,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 蓝色发光弧线氛围光 */
 .app-glow {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(
-      1200px 500px at 50% -10%,
-      color-mix(in srgb, var(--app-accent) 18%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      800px 400px at 50% 0%,
-      color-mix(in srgb, var(--app-accent-light) 10%, transparent),
-      transparent 55%
-    );
+  background: var(--app-bg-deep);
+  opacity: 0.28;
   z-index: 0;
 }
 
@@ -113,16 +133,46 @@ body {
   align-items: center;
   gap: 10px;
   padding: 6px 8px 12px;
+  font-family: var(--app-heading-font);
   font-weight: 700;
   font-size: 16px;
 }
 
-.brand-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
-  box-shadow: 0 0 16px var(--app-accent-glow);
+.brand-mark {
+  color: var(--app-accent);
+  display: inline-flex;
+  font-size: 23px;
+  filter: drop-shadow(0 5px 12px var(--app-accent-glow));
+}
+
+.brand-title {
+  white-space: nowrap;
+}
+
+.tone-trigger {
+  color: var(--app-text-secondary);
+  padding-inline: 8px;
+  flex-shrink: 0;
+}
+
+.tone-dot {
+  width: 14px !important;
+  min-width: 14px;
+  height: 14px !important;
+  flex: 0 0 14px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid var(--app-border-strong);
+  box-shadow: 0 0 0 1px var(--app-surface);
+}
+
+.tone-option-label {
+  width: 76px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .conv-list {
@@ -204,7 +254,8 @@ body {
 }
 
 .avatar.assistant {
-  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
+  background: var(--app-accent);
+  color: #ffffff;
 }
 
 .avatar.user {
@@ -239,15 +290,13 @@ body {
 
 .empty-hero h1 {
   color: var(--app-text-primary);
+  font-family: var(--app-heading-font);
   font-size: 30px;
   font-weight: 700;
 }
 
 .empty-hero .accent {
-  background: linear-gradient(135deg, var(--app-accent), var(--app-accent-light));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--app-accent);
 }
 
 .chat-input {

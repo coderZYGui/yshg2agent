@@ -2,6 +2,14 @@ import { create } from "zustand";
 import type { ThemeMode } from "../theme";
 import type { ChatMessage, DocumentItem, ReviewResult, RoleKey } from "../types";
 
+function getInitialThemeMode(): ThemeMode {
+  const saved = localStorage.getItem("themeMode");
+  if (saved === "editorial" || saved === "precision" || saved === "night") {
+    return saved;
+  }
+  return saved === "dark" ? "night" : "precision";
+}
+
 interface AppState {
   token: string | null;
   username: string | null;
@@ -45,7 +53,7 @@ export const useStore = create<AppState>((set) => ({
   activeReview: null,
   attachments: [],
   sending: false,
-  themeMode: (localStorage.getItem("themeMode") as ThemeMode) || "dark",
+  themeMode: getInitialThemeMode(),
 
   setAuth: (token, username, role) => {
     localStorage.setItem("token", token);
