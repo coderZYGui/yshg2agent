@@ -119,6 +119,9 @@ export async function chatStream(
       else if (event === "token") handlers.onToken?.(data.t ?? "");
       else if (event === "review") handlers.onReview?.(data);
       else if (event === "done") handlers.onDone?.(data);
+      else if (event === "error") {
+        handlers.onError?.(new Error(data.message ?? "附件处理失败"));
+      }
     }
   }
 }

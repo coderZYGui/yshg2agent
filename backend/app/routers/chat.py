@@ -13,6 +13,7 @@ from ..deps import get_current_user
 from ..models import Conversation, Document, Message, User
 from ..schemas import ChatRequest
 from ..services import llm
+from ..services.bailian_files import BailianFileError
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -92,17 +93,12 @@ def _build_bailian_prompt(role: str, message: str, docs: list[dict]) -> str:
 async def _upload_session_files(docs: list[dict]) -> list[str]:
     file_ids = []
     for doc in docs:
-        if doc["is_image"]:
-            continue
         path = Path(doc["storage_path"])
         if not path.exists():
             continue
-        try:
-            file_id = await llm.upload_session_file(
-                str(path), doc["filename"], doc["mime"]
-            )
-        except Exception:
-            file_id = None
+        file_id = await llm.upload_session_file(
+            str(path), doc["filename"], doc["mime"]
+        )
         if file_id:
             file_ids.append(file_id)
     return file_ids
@@ -159,18 +155,25 @@ async def chat_stream(
             },
         )
 
-        session_file_ids = await _upload_session_files(docs)
+        try:
+            session_file_ids = await _upload_session_files(docs)
 
-        buffer = ""
-        async for token in llm.stream_chat(
-            "",
-            user_prompt,
-            images=image_urls,
-            session_file_ids=session_file_ids,
-            mock_payload=mock_payload,
-        ):
-            buffer += token
-            yield _sse("token", {"t": token})
+            buffer = ""
+            async for token in llm.stream_chat(
+                "",
+                user_prompt,
+                images=image_urls,
+                session_file_ids=session_file_ids,
+                mock_payload=mock_payload,
+            ):
+                buffer += token
+                yield _sse("token", {"t": token})
+        except BailianFileError as exc:
+            yield _sse("error", {"message": str(exc)})
+            return
+        except Exception:
+            yield _sse("error", {"message": "智能体调用失败，请稍后重试。"})
+            return
 
         review = _extract_json(buffer) or {
             "summary": buffer,

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -8,6 +10,50 @@ from ..schemas import DocumentOut
 from ..services import storage
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+ATTACHMENT_LIMITS_MB = {
+    ".doc": 100,
+    ".docx": 100,
+    ".wps": 100,
+    ".ppt": 100,
+    ".pptx": 100,
+    ".xls": 100,
+    ".xlsx": 100,
+    ".md": 100,
+    ".txt": 100,
+    ".pdf": 100,
+    ".png": 20,
+    ".jpg": 20,
+    ".jpeg": 20,
+    ".bmp": 20,
+    ".gif": 20,
+    ".mp4": 512,
+    ".mkv": 512,
+    ".avi": 512,
+    ".mov": 512,
+    ".wmv": 512,
+    ".aac": 512,
+    ".amr": 512,
+    ".flac": 512,
+    ".flv": 512,
+    ".m4a": 512,
+    ".mp3": 512,
+    ".mpeg": 512,
+    ".ogg": 512,
+    ".opus": 512,
+    ".wav": 512,
+    ".webm": 512,
+    ".wma": 512,
+}
+
+
+def _validate_attachment(filename: str, size: int) -> None:
+    extension = Path(filename).suffix.lower()
+    max_mb = ATTACHMENT_LIMITS_MB.get(extension)
+    if max_mb is None:
+        raise HTTPException(status_code=400, detail=f"不支持的附件格式：{extension or '无扩展名'}")
+    if size > max_mb * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=f"附件超过 {max_mb}MB 限制")
 
 
 @router.post("/upload", response_model=DocumentOut)
@@ -20,12 +66,16 @@ async def upload_document(
     if kind not in {"review", "knowledge"}:
         raise HTTPException(status_code=400, detail="kind must be review or knowledge")
 
+    filename = file.filename or "upload.bin"
+    if file.size is not None:
+        _validate_attachment(filename, file.size)
     data = await file.read()
-    path = storage.save_upload(file.filename or "upload.bin", data)
+    _validate_attachment(filename, len(data))
+    path = storage.save_upload(filename, data)
 
     doc = Document(
         owner_id=user.id,
-        filename=file.filename or "upload.bin",
+        filename=filename,
         mime=file.content_type or "",
         storage_path=path,
         kind=kind,

@@ -31,8 +31,15 @@ class Settings(BaseSettings):
 
     dashscope_api_key: str = ""
     dashscope_app_id: str = ""
+    dashscope_model_id: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/api/v1"
-    dashscope_file_upload_url: str = ""
+
+    alibaba_cloud_access_key_id: str = ""
+    alibaba_cloud_access_key_secret: str = ""
+    bailian_workspace_id: str = ""
+    bailian_region_id: str = "cn-beijing"
+    bailian_file_poll_interval_seconds: float = 2.0
+    bailian_file_ready_timeout_seconds: int = 300
 
     embedding_api_key: str = ""
     embedding_base_url: str = ""

@@ -2,7 +2,10 @@ import os
 import tempfile
 
 os.environ.setdefault("DATABASE_URL", "")  # 使用 SQLite 降级
-os.environ.setdefault("LLM_API_KEY", "")  # Mock LLM
+os.environ["LLM_PROVIDER"] = "minimax"
+os.environ["LLM_API_KEY"] = ""  # Mock LLM
+os.environ["DASHSCOPE_API_KEY"] = ""
+os.environ["DASHSCOPE_APP_ID"] = ""
 os.environ.setdefault("EMBEDDING_API_KEY", "")  # 本地 embedding
 
 # 为测试使用独立临时 SQLite 库, 避免污染开发库

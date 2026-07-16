@@ -1,12 +1,15 @@
 """LLM provider layer."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
-from pathlib import Path
+from http import HTTPStatus
 
 import httpx
+from dashscope import Application
 
 from ..config import settings
+from . import bailian_files
 
 
 async def stream_chat(
@@ -31,37 +34,9 @@ async def stream_chat(
 
 
 async def upload_session_file(path: str, filename: str, mime: str = "") -> str | None:
-    if settings.llm_is_mock or not settings.dashscope_api_key:
+    if settings.llm_is_mock:
         return None
-
-    url = settings.dashscope_file_upload_url or (
-        f"{settings.dashscope_base_url.rstrip('/')}/files"
-    )
-    headers = {"Authorization": f"Bearer {settings.dashscope_api_key}"}
-    file_path = Path(path)
-
-    async with httpx.AsyncClient(timeout=120) as client:
-        with file_path.open("rb") as f:
-            resp = await client.post(
-                url,
-                headers=headers,
-                data={"purpose": "file-extract", "descriptions": filename},
-                files={
-                    "files": (
-                        filename,
-                        f,
-                        mime or "application/octet-stream",
-                    )
-                },
-            )
-        resp.raise_for_status()
-
-    data = resp.json()
-    uploaded = data.get("data", {}).get("uploaded_files", [])
-    if not uploaded:
-        return None
-    file_id = uploaded[0].get("file_id")
-    return file_id if isinstance(file_id, str) else None
+    return await bailian_files.upload_session_file(path, filename)
 
 
 def _join_prompts(system_prompt: str, user_prompt: str) -> str:
@@ -91,46 +66,38 @@ async def _dashscope_app_stream(
     images: list[str] | None,
     session_file_ids: list[str] | None,
 ) -> AsyncIterator[str]:
-    input_payload: dict = {"prompt": _join_prompts(system_prompt, user_prompt)}
+    options: dict = {
+        "api_key": settings.dashscope_api_key,
+        "app_id": settings.dashscope_app_id,
+        "prompt": _join_prompts(system_prompt, user_prompt),
+        "stream": True,
+        "incremental_output": True,
+        "has_thoughts": False,
+        "enable_thinking": False,
+    }
     if images:
-        input_payload["image_list"] = images
+        options["image_list"] = images
     if session_file_ids:
-        input_payload["session_file_ids"] = session_file_ids
+        options["rag_options"] = {"session_file_ids": session_file_ids}
+    if settings.dashscope_model_id:
+        options["model_id"] = settings.dashscope_model_id
 
-    payload = {
-        "input": input_payload,
-        "parameters": {
-            "incremental_output": True,
-            "has_thoughts": False,
-            "enable_thinking": False,
-        },
-        "debug": {},
-    }
-    headers = {
-        "Authorization": f"Bearer {settings.dashscope_api_key}",
-        "Content-Type": "application/json",
-        "X-DashScope-SSE": "enable",
-    }
-    url = (
-        f"{settings.dashscope_base_url.rstrip('/')}/apps/"
-        f"{settings.dashscope_app_id}/completion"
-    )
-
-    async with httpx.AsyncClient(timeout=180) as client:
-        async with client.stream("POST", url, json=payload, headers=headers) as resp:
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if not line or not line.startswith("data:"):
-                    continue
-                data = line[len("data:"):].strip()
-                if data == "[DONE]":
-                    break
-                try:
-                    token = _dashscope_text(json.loads(data))
-                except json.JSONDecodeError:
-                    continue
-                if token:
-                    yield token
+    responses = await asyncio.to_thread(Application.call, **options)
+    iterator = iter(responses)
+    sentinel = object()
+    while True:
+        response = await asyncio.to_thread(next, iterator, sentinel)
+        if response is sentinel:
+            break
+        if response.status_code != HTTPStatus.OK:
+            raise RuntimeError(
+                "DashScope application request failed: "
+                f"request_id={response.request_id}, "
+                f"code={response.status_code}, message={response.message}"
+            )
+        text = getattr(response.output, "text", "")
+        if text:
+            yield text
 
 
 async def _minimax_stream(

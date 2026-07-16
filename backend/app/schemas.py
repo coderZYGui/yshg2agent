@@ -68,7 +68,7 @@ class ChatRequest(BaseModel):
     conversation_id: int | None = None
     role: str = "pm"
     message: str
-    document_ids: list[int] = []
+    document_ids: list[int] = Field(default_factory=list, max_length=10)
 
 
 class DocumentOut(BaseModel):

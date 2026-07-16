@@ -17,6 +17,59 @@ import type { ChatMessage, ReviewResult } from "../types";
 import { getPastedFiles } from "../utils/getPastedFiles";
 import { stripReferenceTags } from "../utils/stripReferences";
 
+const attachmentLimits: Record<string, number> = {
+  ".doc": 100,
+  ".docx": 100,
+  ".wps": 100,
+  ".ppt": 100,
+  ".pptx": 100,
+  ".xls": 100,
+  ".xlsx": 100,
+  ".md": 100,
+  ".txt": 100,
+  ".pdf": 100,
+  ".png": 20,
+  ".jpg": 20,
+  ".jpeg": 20,
+  ".bmp": 20,
+  ".gif": 20,
+  ".mp4": 512,
+  ".mkv": 512,
+  ".avi": 512,
+  ".mov": 512,
+  ".wmv": 512,
+  ".aac": 512,
+  ".amr": 512,
+  ".flac": 512,
+  ".flv": 512,
+  ".m4a": 512,
+  ".mp3": 512,
+  ".mpeg": 512,
+  ".ogg": 512,
+  ".opus": 512,
+  ".wav": 512,
+  ".webm": 512,
+  ".wma": 512,
+};
+
+const acceptedAttachmentTypes = Object.keys(attachmentLimits).join(",");
+
+function validateAttachment(file: File): string | null {
+  if (useStore.getState().attachments.length >= 10) {
+    return "单次最多上传 10 个附件";
+  }
+  const dot = file.name.lastIndexOf(".");
+  const extension = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+  const maxMb = attachmentLimits[extension];
+  if (!maxMb) {
+    return `不支持的附件格式：${extension || "无扩展名"}`;
+  }
+  if (file.size > maxMb * 1024 * 1024) {
+    return `${file.name} 超过 ${maxMb}MB 限制`;
+  }
+  return null;
+}
+
 const roleTitle: Record<string, string> = {
   pm: "产品经理 · 隐私风险评审",
   qa: "测试开发工程师 · 合规实现评审",
@@ -107,6 +160,11 @@ export default function ChatPanel() {
   }, [messages]);
 
   const handleAttach = async (file: File) => {
+    const validationError = validateAttachment(file);
+    if (validationError) {
+      antdMessage.error(validationError);
+      return false;
+    }
     try {
       const doc = await uploadDocument(file, "review");
       addAttachment(doc);
@@ -151,8 +209,9 @@ export default function ChatPanel() {
           updateLastAssistant({ ...contentPatch, review: r, streaming: false });
         },
         onDone: () => setSending(false),
-        onError: () => {
-          updateLastAssistant({ content: "评审失败，请稍后重试。", streaming: false });
+        onError: (error) => {
+          const content = error instanceof Error ? error.message : "附件处理失败";
+          updateLastAssistant({ content, streaming: false });
           setSending(false);
         },
       }
@@ -214,6 +273,7 @@ export default function ChatPanel() {
               beforeUpload={(f) => handleAttach(f as File)}
               showUploadList={false}
               multiple
+              accept={acceptedAttachmentTypes}
             >
               <Button type="text" size="small" icon={<PaperClipOutlined />}>
                 附件

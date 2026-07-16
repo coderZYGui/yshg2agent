@@ -1,4 +1,7 @@
+import asyncio
 import json
+from http import HTTPStatus
+from types import SimpleNamespace
 
 from app.database import SessionLocal
 from app.models import Chunk
@@ -74,6 +77,54 @@ def test_dashscope_text_extracts_application_output():
         == "fallback"
     )
     assert llm._dashscope_text({"output": {}}) == ""
+
+
+def test_dashscope_sdk_stream_uses_images_and_session_files(monkeypatch):
+    calls = []
+
+    class FakeApplication:
+        @staticmethod
+        def call(**kwargs):
+            calls.append(kwargs)
+            return iter(
+                [
+                    SimpleNamespace(
+                        status_code=HTTPStatus.OK,
+                        output=SimpleNamespace(text="first"),
+                    ),
+                    SimpleNamespace(
+                        status_code=HTTPStatus.OK,
+                        output=SimpleNamespace(text=" second"),
+                    ),
+                ]
+            )
+
+    monkeypatch.setattr(llm, "Application", FakeApplication)
+    monkeypatch.setattr(llm.settings, "dashscope_model_id", "qwen3.7-max")
+
+    async def collect():
+        return [
+            token
+            async for token in llm._dashscope_app_stream(
+                "system", "question", ["data:image/png;base64,abc"], ["file_session_1"]
+            )
+        ]
+
+    assert asyncio.run(collect()) == ["first", " second"]
+    assert calls == [
+        {
+            "api_key": llm.settings.dashscope_api_key,
+            "app_id": llm.settings.dashscope_app_id,
+            "prompt": "system\n\nquestion",
+            "stream": True,
+            "incremental_output": True,
+            "has_thoughts": False,
+            "enable_thinking": False,
+            "image_list": ["data:image/png;base64,abc"],
+            "rag_options": {"session_file_ids": ["file_session_1"]},
+            "model_id": "qwen3.7-max",
+        }
+    ]
 
 
 def test_chat_stream_returns_review(client, auth_headers):
