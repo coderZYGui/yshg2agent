@@ -167,14 +167,6 @@ body {
   box-shadow: 0 0 0 1px var(--app-surface);
 }
 
-.tone-option-label {
-  width: 76px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .conv-list {
   flex: 1;
   overflow-y: auto;

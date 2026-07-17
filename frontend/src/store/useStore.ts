@@ -15,20 +15,21 @@ interface AppState {
   username: string | null;
   role: RoleKey;
 
-  conversationId: number | null;
+  conversationId: string | null;
   messages: ChatMessage[];
   activeReview: ReviewResult | null;
   attachments: DocumentItem[];
   sending: boolean;
   themeMode: ThemeMode;
+  historyVersion: number;
 
   setAuth: (token: string, username: string, role: RoleKey) => void;
   logout: () => void;
   setRole: (role: RoleKey) => void;
 
-  setConversationId: (id: number | null) => void;
+  setConversationId: (id: string | null) => void;
   setConversationMessages: (
-    id: number,
+    id: string,
     messages: ChatMessage[],
     activeReview: ReviewResult | null
   ) => void;
@@ -40,6 +41,7 @@ interface AppState {
   clearAttachments: () => void;
   setSending: (v: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  notifyHistoryChanged: () => void;
   newConversation: () => void;
 }
 
@@ -54,6 +56,7 @@ export const useStore = create<AppState>((set) => ({
   attachments: [],
   sending: false,
   themeMode: getInitialThemeMode(),
+  historyVersion: 0,
 
   setAuth: (token, username, role) => {
     localStorage.setItem("token", token);
@@ -104,6 +107,8 @@ export const useStore = create<AppState>((set) => ({
     localStorage.setItem("themeMode", themeMode);
     set({ themeMode });
   },
+  notifyHistoryChanged: () =>
+    set((state) => ({ historyVersion: state.historyVersion + 1 })),
   newConversation: () =>
     set({ conversationId: null, messages: [], activeReview: null, attachments: [] }),
 }));

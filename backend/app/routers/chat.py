@@ -8,9 +8,9 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..database import SessionLocal, get_db
+from ..database import get_db
 from ..deps import get_current_user
-from ..models import Conversation, Document, Message, User
+from ..models import Document, User
 from ..schemas import ChatRequest
 from ..services import llm
 from ..services.bailian_files import BailianFileError
@@ -108,37 +108,11 @@ async def _upload_session_files(docs: list[dict]) -> list[str]:
 async def chat_stream(
     req: ChatRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_user),
 ):
-    conv: Conversation | None = None
-    if req.conversation_id:
-        conv = (
-            db.query(Conversation)
-            .filter(Conversation.id == req.conversation_id, Conversation.user_id == user.id)
-            .first()
-        )
-    if conv is None:
-        conv = Conversation(
-            user_id=user.id, title=req.message[:20] or "新会话", role=req.role
-        )
-        db.add(conv)
-        db.commit()
-        db.refresh(conv)
-
-    conv_id = conv.id
     docs = _attachment_docs(db, req.document_ids)
     image_urls = _image_data_urls(docs)
     user_prompt = _build_bailian_prompt(req.role, req.message, docs)
-
-    db.add(
-        Message(
-            conversation_id=conv_id,
-            role="user",
-            content=req.message,
-            attachments=req.document_ids,
-        )
-    )
-    db.commit()
 
     mock_payload = {
         "question": req.message,
@@ -149,7 +123,6 @@ async def chat_stream(
         yield _sse(
             "meta",
             {
-                "conversation_id": conv_id,
                 "attachments": len(docs),
                 "images": len(image_urls),
             },
@@ -179,20 +152,8 @@ async def chat_stream(
             "summary": buffer,
             "items": [],
         }
-        summary = review.get("summary", "")
-
-        with SessionLocal() as wdb:
-            wdb.add(
-                Message(
-                    conversation_id=conv_id,
-                    role="assistant",
-                    content=summary or buffer[:500],
-                    review_result=review,
-                )
-            )
-            wdb.commit()
 
         yield _sse("review", review)
-        yield _sse("done", {"conversation_id": conv_id})
+        yield _sse("done", {})
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")

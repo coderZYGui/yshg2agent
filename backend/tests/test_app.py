@@ -4,7 +4,7 @@ from http import HTTPStatus
 from types import SimpleNamespace
 
 from app.database import SessionLocal
-from app.models import Chunk
+from app.models import Chunk, Conversation, Message
 from app.services import llm, parser
 from app.services.redaction import redact
 
@@ -152,6 +152,25 @@ def test_chat_stream_returns_review(client, auth_headers):
     assert review_data is not None
     assert "items" in review_data
     assert len(review_data["items"]) >= 1
+
+
+def test_chat_stream_does_not_persist_conversation_history(client, auth_headers):
+    with SessionLocal() as db:
+        conversation_count = db.query(Conversation).count()
+        message_count = db.query(Message).count()
+
+    with client.stream(
+        "POST",
+        "/api/chat/stream",
+        json={"role": "pm", "message": "请检查这段隐私条款", "document_ids": []},
+        headers=auth_headers,
+    ) as resp:
+        assert resp.status_code == 200
+        assert "event: done" in "".join(resp.iter_text())
+
+    with SessionLocal() as db:
+        assert db.query(Conversation).count() == conversation_count
+        assert db.query(Message).count() == message_count
 
 
 def test_knowledge_upload_and_retrieve(client, auth_headers):

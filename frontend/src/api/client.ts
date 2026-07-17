@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Conversation, ConversationMessage, DocumentItem, ReviewResult } from "../types";
+import type { DocumentItem, ReviewResult } from "../types";
 
 const api = axios.create({ baseURL: "/api" });
 
@@ -20,20 +20,6 @@ export async function login(username: string, password: string) {
 export async function register(username: string, password: string, role: string) {
   const { data } = await api.post("/auth/register", { username, password, role });
   return data;
-}
-
-export async function listConversations() {
-  const { data } = await api.get("/conversations");
-  return data as Conversation[];
-}
-
-export async function getConversationMessages(id: number) {
-  const { data } = await api.get(`/conversations/${id}/messages`);
-  return data as ConversationMessage[];
-}
-
-export async function deleteConversation(id: number) {
-  await api.delete(`/conversations/${id}`);
 }
 
 export async function listKnowledge() {
@@ -61,16 +47,15 @@ export async function uploadDocument(file: File, kind = "review") {
 }
 
 export interface StreamHandlers {
-  onMeta?: (m: { conversation_id: number; attachments?: number; images?: number }) => void;
+  onMeta?: (m: { attachments?: number; images?: number }) => void;
   onToken?: (t: string) => void;
   onReview?: (r: ReviewResult) => void;
-  onDone?: (d: { conversation_id: number }) => void;
+  onDone?: () => void;
   onError?: (e: unknown) => void;
 }
 
 export async function chatStream(
   body: {
-    conversation_id: number | null;
     role: string;
     message: string;
     document_ids: number[];
@@ -118,7 +103,7 @@ export async function chatStream(
       if (event === "meta") handlers.onMeta?.(data);
       else if (event === "token") handlers.onToken?.(data.t ?? "");
       else if (event === "review") handlers.onReview?.(data);
-      else if (event === "done") handlers.onDone?.(data);
+      else if (event === "done") handlers.onDone?.();
       else if (event === "error") {
         handlers.onError?.(new Error(data.message ?? "附件处理失败"));
       }

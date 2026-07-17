@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { chatStream, uploadDocument } from "../api/client";
+import { saveLocalConversation } from "../services/localHistory";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
 import type { ChatMessage, ReviewResult } from "../types";
@@ -187,6 +188,7 @@ export default function ChatPanel() {
     addAttachment,
     clearAttachments,
     setSending,
+    notifyHistoryChanged,
   } = useStore();
   const [text, setText] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -224,6 +226,8 @@ export default function ChatPanel() {
   const send = async () => {
     if (!text.trim() || sending) return;
     const userText = text.trim();
+    const localConversationId = conversationId ?? crypto.randomUUID();
+    if (!conversationId) setConversationId(localConversationId);
     setText("");
     addMessage({ id: crypto.randomUUID(), role: "user", content: userText });
     addMessage({ id: crypto.randomUUID(), role: "assistant", content: "", streaming: true });
@@ -233,9 +237,8 @@ export default function ChatPanel() {
     const docIds = attachments.map((a) => a.id);
 
     await chatStream(
-      { conversation_id: conversationId, role, message: userText, document_ids: docIds },
+      { role, message: userText, document_ids: docIds },
       {
-        onMeta: (m) => setConversationId(m.conversation_id),
         onToken: (token) => {
           appendToLastAssistant(token);
         },
@@ -253,6 +256,18 @@ export default function ChatPanel() {
       }
     );
     clearAttachments();
+    const state = useStore.getState();
+    try {
+      await saveLocalConversation(
+        state.username ?? "anonymous",
+        localConversationId,
+        role,
+        state.messages
+      );
+      notifyHistoryChanged();
+    } catch {
+      antdMessage.error("本地历史记录保存失败");
+    }
   };
 
   return (

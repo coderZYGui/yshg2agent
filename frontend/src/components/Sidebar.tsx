@@ -1,6 +1,4 @@
 import {
-  BgColorsOutlined,
-  CheckOutlined,
   DeleteOutlined,
   FileTextOutlined,
   LogoutOutlined,
@@ -10,10 +8,10 @@ import {
 import { Button, Dropdown, Modal, Segmented, Tooltip, message } from "antd";
 import { useEffect, useState } from "react";
 import {
-  deleteConversation,
-  getConversationMessages,
-  listConversations,
-} from "../api/client";
+  deleteLocalConversation,
+  getLocalConversation,
+  listLocalConversations,
+} from "../services/localHistory";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
 import type { Conversation, RoleKey } from "../types";
@@ -39,28 +37,33 @@ export default function Sidebar() {
     newConversation,
     setConversationMessages,
     conversationId,
+    historyVersion,
+    sending,
     themeMode,
     setThemeMode,
   } = useStore();
   const [convs, setConvs] = useState<Conversation[]>([]);
+  const toneIndex = toneOptions.findIndex((tone) => tone.key === themeMode);
+  const currentTone = toneOptions[toneIndex] ?? toneOptions[0];
+  const nextTone = toneOptions[(toneIndex + 1) % toneOptions.length];
 
-  const refreshConvs = () => listConversations().then(setConvs).catch(() => {});
+  const owner = username ?? "anonymous";
+  const refreshConvs = () =>
+    listLocalConversations(owner)
+      .then(setConvs)
+      .catch(() => message.error("读取本地历史记录失败"));
 
-  const openConversation = async (id: number) => {
+  const openConversation = async (id: string) => {
     try {
-      const rows = await getConversationMessages(id);
-      const messages = rows.map((m) => ({
-        id: String(m.id),
-        role: m.role,
-        content: m.content,
-        review: m.review_result ?? undefined,
-      }));
+      const conversation = await getLocalConversation(owner, id);
+      if (!conversation) return;
+      const messages = conversation.messages;
       const activeReview =
-        [...rows].reverse().find((m) => m.role === "assistant" && m.review_result)
-          ?.review_result ?? null;
+        [...messages].reverse().find((m) => m.role === "assistant" && m.review)?.review ??
+        null;
       setConversationMessages(id, messages, activeReview);
     } catch {
-      message.error("鍔犺浇浼氳瘽澶辫触");
+      message.error("读取本地历史记录失败");
     }
   };
 
@@ -73,12 +76,12 @@ export default function Sidebar() {
       cancelText: "取消",
       onOk: async () => {
         try {
-          await deleteConversation(conv.id);
+          await deleteLocalConversation(owner, conv.id);
           setConvs((items) => items.filter((item) => item.id !== conv.id));
           if (conversationId === conv.id) newConversation();
           message.success("已删除会话");
         } catch (error) {
-          message.error("删除会话失败，请确认后端服务已重启");
+          message.error("删除本地会话失败");
           throw error;
         }
       },
@@ -87,7 +90,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     refreshConvs();
-  }, [conversationId]);
+  }, [conversationId, historyVersion, owner]);
 
   return (
     <div className="sidebar">
@@ -97,37 +100,16 @@ export default function Sidebar() {
         </span>
         <span className="brand-title">隐私合规评审</span>
         <div style={{ flex: 1 }} />
-        <Dropdown
-          trigger={["click"]}
-          placement="bottomRight"
-          menu={{
-            selectable: true,
-            selectedKeys: [themeMode],
-            items: toneOptions.map((tone) => ({
-              key: tone.key,
-              icon: <span className="tone-dot" style={{ background: tone.color }} />,
-              label: (
-                <span className="tone-option-label">
-                  <span>{tone.label}</span>
-                  {tone.key === themeMode && <CheckOutlined />}
-                </span>
-              ),
-            })),
-            onClick: ({ key }) => setThemeMode(key as typeof themeMode),
-          }}
-        >
-          <Tooltip title="切换页面色调">
-            <Button
-              className="tone-trigger"
-              type="default"
-              size="small"
-              icon={<BgColorsOutlined />}
-              aria-label="切换页面色调"
-            >
-              色调
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        <Tooltip title={`当前：${currentTone.label}，点击切换为${nextTone.label}`}>
+          <Button
+            className="tone-trigger"
+            type="default"
+            size="small"
+            icon={<span className="tone-dot" style={{ background: currentTone.color }} />}
+            aria-label={`切换页面色调，当前${currentTone.label}`}
+            onClick={() => setThemeMode(nextTone.key)}
+          />
+        </Tooltip>
       </div>
 
       <div>
@@ -136,13 +118,14 @@ export default function Sidebar() {
         </div>
         <Segmented
           block
+          disabled={sending}
           options={roleOptions}
           value={role}
           onChange={(v) => setRole(v as RoleKey)}
         />
       </div>
 
-      <Button icon={<PlusOutlined />} block onClick={newConversation}>
+      <Button icon={<PlusOutlined />} block disabled={sending} onClick={newConversation}>
         新建会话
       </Button>
 
@@ -158,6 +141,7 @@ export default function Sidebar() {
         {convs.map((c) => (
           <Dropdown
             key={c.id}
+            disabled={sending}
             trigger={["contextMenu"]}
             menu={{
               items: [
@@ -173,11 +157,16 @@ export default function Sidebar() {
           >
             <div
               className={`conv-item ${c.id === conversationId ? "active" : ""}`}
-              onClick={() => openConversation(c.id)}
+              onClick={() => {
+                if (!sending) openConversation(c.id);
+              }}
               role="button"
-              tabIndex={0}
+              aria-disabled={sending}
+              tabIndex={sending ? -1 : 0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") openConversation(c.id);
+                if (!sending && (e.key === "Enter" || e.key === " ")) {
+                  openConversation(c.id);
+                }
               }}
             >
               <FileTextOutlined style={{ marginRight: 8 }} />
@@ -200,7 +189,13 @@ export default function Sidebar() {
       >
         <span>{username}</span>
         <Tooltip title="退出登录">
-          <Button type="text" size="small" icon={<LogoutOutlined />} onClick={logout} />
+          <Button
+            type="text"
+            size="small"
+            icon={<LogoutOutlined />}
+            disabled={sending}
+            onClick={logout}
+          />
         </Tooltip>
       </div>
 

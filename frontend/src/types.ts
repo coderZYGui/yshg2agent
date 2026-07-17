@@ -27,19 +27,12 @@ export interface ChatMessage {
   streaming?: boolean;
 }
 
-export interface ConversationMessage {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
-  review_result?: ReviewResult | null;
-  created_at: string;
-}
-
 export interface Conversation {
-  id: number;
+  id: string;
   title: string;
   role: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface DocumentItem {

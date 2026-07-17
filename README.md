@@ -6,8 +6,9 @@
 
 ```text
 React/Vite 前端
+  -> 浏览器 IndexedDB                    # 按登录用户保存对话历史
   -> FastAPI 本地后端
-    -> backend/data/app.db                # SQLite，本地保存用户、会话、文档、切片
+    -> backend/data/app.db                # SQLite，本地保存用户、文档、切片，不保存对话
     -> backend/data/uploads/              # 本地上传文件
     -> backend/data/knowledge/chunks.json # 可查看的本地知识库切片索引
     -> LLM API 或 Mock                    # 无 Key 时自动 Mock

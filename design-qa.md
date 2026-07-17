@@ -30,7 +30,7 @@ The brand area and tone menu are readable in the full-view captures, so no separ
 
 ## Interaction and technical verification
 
-- Opened the labeled 色调 menu and selected 暖米青、明净蓝、深海蓝.
+- Clicked the tone swatch button and confirmed the cycle 暖米青 → 明净蓝 → 深海蓝 → 暖米青.
 - Confirmed all three menu swatches render as 14 × 14 circles without flex compression.
 - Confirmed `data-theme` changes for each selection.
 - Reloaded after selecting 清澈蓝 and confirmed the selection persisted.
