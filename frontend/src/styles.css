@@ -282,6 +282,18 @@ body {
   border: 1px solid var(--app-accent-mid);
 }
 
+.bubble-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.bubble-actions .ant-btn {
+  color: var(--app-text-secondary);
+  margin-right: -8px;
+  margin-bottom: -6px;
+}
+
 .empty-hero {
   margin: auto;
   text-align: center;

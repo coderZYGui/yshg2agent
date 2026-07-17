@@ -1,11 +1,13 @@
 import {
+  CheckOutlined,
+  CopyOutlined,
   CloseOutlined,
   PaperClipOutlined,
   RobotOutlined,
   SendOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Input, Tag, Upload, message as antdMessage } from "antd";
+import { Button, Input, Tag, Tooltip, Upload, message as antdMessage } from "antd";
 import type { ClipboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -111,6 +113,19 @@ function formatReviewMarkdown(review: ReviewResult) {
 
 function Bubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
+  const displayContent = stripReferenceTags(msg.content);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+
+  const copyMarkdown = async () => {
+    try {
+      await navigator.clipboard.writeText(displayContent);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+    window.setTimeout(() => setCopyStatus("idle"), 1500);
+  };
+
   return (
     <div className={`msg-row ${isUser ? "user" : "assistant"}`}>
       <div className={`avatar ${isUser ? "user" : "assistant"}`}>
@@ -120,12 +135,33 @@ function Bubble({ msg }: { msg: ChatMessage }) {
         {msg.content ? (
           <>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {stripReferenceTags(msg.content)}
+              {displayContent}
             </ReactMarkdown>
             {msg.streaming && (
               <span style={{ color: colors.accent, marginLeft: 3 }} aria-hidden="true">
                 ▍
               </span>
+            )}
+            {!isUser && !msg.streaming && (
+              <div className="bubble-actions">
+                <Tooltip
+                  title={copyStatus === "error" ? "复制失败，请重试" : "复制 Markdown 源文本"}
+                >
+                  <Button
+                    type="text"
+                    size="small"
+                    danger={copyStatus === "error"}
+                    icon={copyStatus === "copied" ? <CheckOutlined /> : <CopyOutlined />}
+                    onClick={copyMarkdown}
+                  >
+                    {copyStatus === "copied"
+                      ? "已复制"
+                      : copyStatus === "error"
+                        ? "复制失败"
+                        : "复制 Markdown"}
+                  </Button>
+                </Tooltip>
+              </div>
             )}
           </>
         ) : msg.streaming ? (
