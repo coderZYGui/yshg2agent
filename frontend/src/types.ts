@@ -19,10 +19,18 @@ export interface ReviewResult {
   items: RiskItem[];
 }
 
+export interface ChatAttachment {
+  id: number;
+  filename: string;
+  mime: string;
+  previewBlob?: Blob;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  attachments?: ChatAttachment[];
   review?: ReviewResult;
   streaming?: boolean;
 }
@@ -35,10 +43,7 @@ export interface Conversation {
   updated_at: string;
 }
 
-export interface DocumentItem {
-  id: number;
-  filename: string;
-  mime: string;
+export interface DocumentItem extends ChatAttachment {
   kind: string;
   parse_status: string;
   summary: string;

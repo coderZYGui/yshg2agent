@@ -274,6 +274,58 @@ body {
   border: 1px solid var(--app-accent-mid);
 }
 
+.message-attachments,
+.pending-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-attachments {
+  margin-bottom: 8px;
+}
+
+.attachment-preview {
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 12px;
+  background: var(--app-surface-alt);
+}
+
+.attachment-preview.compact {
+  width: 56px;
+  height: 56px;
+  border-radius: 9px;
+}
+
+.attachment-preview .ant-image,
+.attachment-preview .ant-image-img {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-preview .ant-image-img {
+  display: block;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.attachment-preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text-muted);
+  font-size: 22px;
+}
+
+.attachment-preview-placeholder.failed {
+  color: var(--app-danger, #c2413c);
+}
+
 .bubble-actions {
   display: flex;
   justify-content: flex-end;

@@ -2,12 +2,13 @@ import {
   CheckOutlined,
   CopyOutlined,
   CloseOutlined,
+  FileImageOutlined,
   PaperClipOutlined,
   RobotOutlined,
   SendOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Input, Tag, Tooltip, Upload, message as antdMessage } from "antd";
+import { Button, Image, Input, Tag, Tooltip, Upload, message as antdMessage } from "antd";
 import type { ClipboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -16,7 +17,7 @@ import { chatStream, uploadDocument } from "../api/client";
 import { saveLocalConversation } from "../services/localHistory";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
-import type { ChatMessage, ReviewResult } from "../types";
+import type { ChatAttachment, ChatMessage, ReviewResult } from "../types";
 import { getPastedFiles } from "../utils/getPastedFiles";
 import { stripReferenceTags } from "../utils/stripReferences";
 
@@ -112,6 +113,61 @@ function formatReviewMarkdown(review: ReviewResult) {
   return parts.join("\n");
 }
 
+function AttachmentPreview({
+  attachment,
+  compact = false,
+}: {
+  attachment: ChatAttachment;
+  compact?: boolean;
+}) {
+  const [source, setSource] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const isImage = attachment.mime.startsWith("image/");
+
+  useEffect(() => {
+    setSource(null);
+    setFailed(false);
+    if (!isImage || !attachment.previewBlob) {
+      setFailed(isImage);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(attachment.previewBlob);
+    setSource(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [attachment.previewBlob, isImage]);
+
+  if (!isImage) {
+    return (
+      <span className="attach-chip">
+        <PaperClipOutlined />
+        {attachment.filename}
+      </span>
+    );
+  }
+
+  return (
+    <div className={`attachment-preview ${compact ? "compact" : ""}`}>
+      {source && !failed ? (
+        <Image
+          src={source}
+          alt={attachment.filename}
+          onError={() => setFailed(true)}
+          preview={{ mask: "查看大图" }}
+        />
+      ) : (
+        <Tooltip title={failed ? "图片预览加载失败" : attachment.filename}>
+          <div className={`attachment-preview-placeholder ${failed ? "failed" : ""}`}>
+            <FileImageOutlined />
+          </div>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
 function Bubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
   const displayContent = stripReferenceTags(msg.content);
@@ -133,6 +189,13 @@ function Bubble({ msg }: { msg: ChatMessage }) {
         {isUser ? <UserOutlined /> : <RobotOutlined />}
       </div>
       <div className={`bubble ${isUser ? "user" : "assistant"}`}>
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className="message-attachments">
+            {msg.attachments.map((attachment) => (
+              <AttachmentPreview key={attachment.id} attachment={attachment} />
+            ))}
+          </div>
+        )}
         {msg.content ? (
           <>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -205,7 +268,10 @@ export default function ChatPanel() {
     }
     try {
       const doc = await uploadDocument(file, "review");
-      addAttachment(doc);
+      addAttachment({
+        ...doc,
+        previewBlob: file.type.startsWith("image/") ? file : undefined,
+      });
       antdMessage.success(`已上传 ${file.name}`);
     } catch {
       antdMessage.error("上传失败");
@@ -226,10 +292,21 @@ export default function ChatPanel() {
   const send = async () => {
     if (!text.trim() || sending) return;
     const userText = text.trim();
+    const sentAttachments = attachments.map(({ id, filename, mime, previewBlob }) => ({
+      id,
+      filename,
+      mime,
+      previewBlob,
+    }));
     const localConversationId = conversationId ?? crypto.randomUUID();
     if (!conversationId) setConversationId(localConversationId);
     setText("");
-    addMessage({ id: crypto.randomUUID(), role: "user", content: userText });
+    addMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: userText,
+      attachments: sentAttachments,
+    });
     addMessage({ id: crypto.randomUUID(), role: "assistant", content: "", streaming: true });
     setSending(true);
     setActiveReview(null);
@@ -296,12 +373,9 @@ export default function ChatPanel() {
       <div className="chat-input">
         <div className="input-shell">
           {attachments.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div className="pending-attachments">
               {attachments.map((a) => (
-                <span className="attach-chip" key={a.id}>
-                  <PaperClipOutlined />
-                  {a.filename}
-                </span>
+                <AttachmentPreview key={a.id} attachment={a} compact />
               ))}
             </div>
           )}
