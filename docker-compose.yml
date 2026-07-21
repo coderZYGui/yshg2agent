@@ -1,25 +1,43 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
     environment:
-      LLM_API_KEY: "${LLM_API_KEY:-}"
-      LLM_BASE_URL: "${LLM_BASE_URL:-https://api.minimaxi.com/v1}"
-      LLM_MODEL: "${LLM_MODEL:-MiniMax-M1}"
-      LLM_PROVIDER: "${LLM_PROVIDER:-minimax}"
-      DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-}"
-      DASHSCOPE_APP_ID: "${DASHSCOPE_APP_ID:-}"
-      DASHSCOPE_BASE_URL: "${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/api/v1}"
-      DASHSCOPE_FILE_UPLOAD_URL: "${DASHSCOPE_FILE_UPLOAD_URL:-}"
-      EMBEDDING_API_KEY: "${EMBEDDING_API_KEY:-}"
-      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+      LLM_PROVIDER: dashscope_app
+      DATABASE_URL: sqlite:////app/data/app.db
+      CORS_ORIGINS: http://localhost:8080
     volumes:
       - ./backend/data:/app/data
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

@@ -1,0 +1,5 @@
+.env*
+.npm-cache/
+dist/
+node_modules/
+*.log

@@ -60,9 +60,12 @@ npm run dev
 在 `backend/.env` 中配置：
 
 ```env
-LLM_API_KEY=你的模型Key
-LLM_BASE_URL=https://api.minimaxi.com/v1
-LLM_MODEL=MiniMax-M1
+LLM_PROVIDER=dashscope_app
+DASHSCOPE_API_KEY=你的百炼API_KEY
+DASHSCOPE_APP_ID=你的百炼应用ID
+ALIBABA_CLOUD_ACCESS_KEY_ID=你的阿里云AccessKey_ID
+ALIBABA_CLOUD_ACCESS_KEY_SECRET=你的阿里云AccessKey_Secret
+BAILIAN_WORKSPACE_ID=你的百炼业务空间ID
 ```
 
 可选接入 embedding API：
@@ -83,6 +86,8 @@ EMBEDDING_MODEL=bge-m3
 ```powershell
 docker compose up -d --build
 ```
+
+第一次使用请先阅读 [Windows Docker Compose 部署手册](./DOCKER_DEPLOYMENT_WINDOWS.md)，按步骤准备 `backend/.env` 并检查服务状态。
 
 访问：
 
