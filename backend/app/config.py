@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     app_name: str = "隐私合规智能评审"
     secret_key: str = "change-me-in-production"
     access_token_expire_minutes: int = 1440
+    access_password: str = "local666"
     algorithm: str = "HS256"
 
     database_url: str = ""

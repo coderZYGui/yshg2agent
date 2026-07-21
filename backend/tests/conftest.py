@@ -2,6 +2,7 @@ import os
 import tempfile
 
 os.environ.setdefault("DATABASE_URL", "")  # 使用 SQLite 降级
+os.environ["ACCESS_PASSWORD"] = "local666"
 os.environ["LLM_PROVIDER"] = "minimax"
 os.environ["LLM_API_KEY"] = ""  # Mock LLM
 os.environ["DASHSCOPE_API_KEY"] = ""
@@ -23,6 +24,8 @@ from app.main import app  # noqa: E402
 def client():
     init_db()
     with TestClient(app) as c:
+        response = c.post("/api/access/verify", json={"password": "local666"})
+        assert response.status_code == 200
         yield c
 
 

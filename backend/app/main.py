@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from .access_gate import ACCESS_COOKIE_NAME, has_valid_access_gate
 from .config import settings
 from .database import SessionLocal, init_db
-from .routers import auth, chat, conversations, documents, knowledge
+from .routers import access, auth, chat, conversations, documents, knowledge
 from .seed import seed
 
 
@@ -19,6 +21,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+_ACCESS_PUBLIC_PATHS = {
+    "/api/health",
+    "/api/access/verify",
+    "/api/access/status",
+    "/api/access/logout",
+}
+
+
+@app.middleware("http")
+async def require_access_gate(request: Request, call_next):
+    path = request.url.path.rstrip("/") or "/"
+    is_protected_api = path.startswith("/api/") and path not in _ACCESS_PUBLIC_PATHS
+    if (
+        request.method != "OPTIONS"
+        and is_protected_api
+        and not has_valid_access_gate(request.cookies.get(ACCESS_COOKIE_NAME))
+    ):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "请先完成访问校验"},
+        )
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -27,6 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(access.router)
 app.include_router(auth.router)
 app.include_router(conversations.router)
 app.include_router(chat.router)
