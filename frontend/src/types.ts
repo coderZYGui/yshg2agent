@@ -41,6 +41,7 @@ export interface Conversation {
   role: string;
   created_at: string;
   updated_at: string;
+  pinned?: boolean;
 }
 
 export interface DocumentItem extends ChatAttachment {

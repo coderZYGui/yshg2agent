@@ -1,20 +1,30 @@
 import {
   DeleteOutlined,
+  EditOutlined,
   FileTextOutlined,
   LogoutOutlined,
+  MoreOutlined,
   PlusOutlined,
+  PushpinFilled,
+  PushpinOutlined,
   SafetyCertificateFilled,
 } from "@ant-design/icons";
-import { Button, Dropdown, Modal, Segmented, Tooltip, message } from "antd";
+import { Button, Dropdown, Input, Modal, Segmented, Tooltip, message } from "antd";
+import type { MenuProps } from "antd";
 import { useEffect, useState } from "react";
 import {
   deleteLocalConversation,
   getLocalConversation,
   listLocalConversations,
+  renameLocalConversation,
+  setLocalConversationPinned,
 } from "../services/localHistory";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
 import type { Conversation, RoleKey } from "../types";
+import { sortConversations } from "../utils/sortConversations";
+
+import "./conversation-menu.css";
 
 const roleOptions = [
   { label: "产品", value: "pm" },
@@ -43,6 +53,9 @@ export default function Sidebar() {
     setThemeMode,
   } = useStore();
   const [convs, setConvs] = useState<Conversation[]>([]);
+  const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
   const toneIndex = toneOptions.findIndex((tone) => tone.key === themeMode);
   const currentTone = toneOptions[toneIndex] ?? toneOptions[0];
   const nextTone = toneOptions[(toneIndex + 1) % toneOptions.length];
@@ -67,6 +80,51 @@ export default function Sidebar() {
     }
   };
 
+  const startRename = (conv: Conversation) => {
+    setRenameTarget(conv);
+    setRenameValue(conv.title);
+  };
+
+  const confirmRename = async () => {
+    if (!renameTarget) return;
+    const title = renameValue.replace(/\s+/g, " ").trim();
+    if (!title) {
+      message.warning("会话名称不能为空");
+      return;
+    }
+
+    setRenameSaving(true);
+    try {
+      await renameLocalConversation(owner, renameTarget.id, title);
+      setConvs((items) =>
+        items.map((item) =>
+          item.id === renameTarget.id ? { ...item, title } : item
+        )
+      );
+      setRenameTarget(null);
+      message.success("会话已重命名");
+    } catch {
+      message.error("重命名失败");
+    } finally {
+      setRenameSaving(false);
+    }
+  };
+
+  const togglePinned = async (conv: Conversation) => {
+    const pinned = !conv.pinned;
+    try {
+      await setLocalConversationPinned(owner, conv.id, pinned);
+      setConvs((items) =>
+        sortConversations(
+          items.map((item) => (item.id === conv.id ? { ...item, pinned } : item))
+        )
+      );
+      message.success(pinned ? "会话已置顶" : "已取消置顶");
+    } catch {
+      message.error(pinned ? "置顶失败" : "取消置顶失败");
+    }
+  };
+
   const removeConversation = (conv: Conversation) => {
     Modal.confirm({
       title: "删除历史会话",
@@ -87,6 +145,34 @@ export default function Sidebar() {
       },
     });
   };
+
+  const getConversationMenu = (conv: Conversation): MenuProps => ({
+    items: [
+      {
+        key: "rename",
+        icon: <EditOutlined />,
+        label: "重命名",
+      },
+      {
+        key: "pin",
+        icon: conv.pinned ? <PushpinFilled /> : <PushpinOutlined />,
+        label: conv.pinned ? "取消置顶" : "置顶",
+      },
+      { type: "divider" as const },
+      {
+        key: "delete",
+        danger: true,
+        icon: <DeleteOutlined />,
+        label: "删除会话",
+      },
+    ],
+    onClick: ({ key, domEvent }) => {
+      domEvent.stopPropagation();
+      if (key === "rename") startRename(conv);
+      else if (key === "pin") void togglePinned(conv);
+      else if (key === "delete") removeConversation(conv);
+    },
+  });
 
   useEffect(() => {
     refreshConvs();
@@ -143,34 +229,42 @@ export default function Sidebar() {
             key={c.id}
             disabled={sending}
             trigger={["contextMenu"]}
-            menu={{
-              items: [
-                {
-                  key: "delete",
-                  danger: true,
-                  icon: <DeleteOutlined />,
-                  label: "删除会话",
-                },
-              ],
-              onClick: () => removeConversation(c),
-            }}
+            overlayClassName="conversation-action-menu"
+            menu={getConversationMenu(c)}
           >
             <div
-              className={`conv-item ${c.id === conversationId ? "active" : ""}`}
-              onClick={() => {
-                if (!sending) openConversation(c.id);
-              }}
-              role="button"
-              aria-disabled={sending}
-              tabIndex={sending ? -1 : 0}
-              onKeyDown={(e) => {
-                if (!sending && (e.key === "Enter" || e.key === " ")) {
-                  openConversation(c.id);
-                }
-              }}
+              className={`conv-item ${c.id === conversationId ? "active" : ""} ${
+                c.pinned ? "pinned" : ""
+              }`}
             >
-              <FileTextOutlined style={{ marginRight: 8 }} />
-              {c.title}
+              <button
+                className="conv-open"
+                type="button"
+                disabled={sending}
+                onClick={() => openConversation(c.id)}
+              >
+                <span className="conv-item-icon" aria-hidden="true">
+                  {c.pinned ? <PushpinFilled /> : <FileTextOutlined />}
+                </span>
+                <span className="conv-item-title" title={c.title}>
+                  {c.title}
+                </span>
+              </button>
+              <Dropdown
+                disabled={sending}
+                trigger={["click"]}
+                placement="bottomRight"
+                overlayClassName="conversation-action-menu"
+                menu={getConversationMenu(c)}
+              >
+                <Button
+                  className="conv-more"
+                  type="text"
+                  size="small"
+                  icon={<MoreOutlined />}
+                  aria-label={`管理会话：${c.title}`}
+                />
+              </Dropdown>
             </div>
           </Dropdown>
         ))}
@@ -199,6 +293,33 @@ export default function Sidebar() {
         </Tooltip>
       </div>
 
+      <Modal
+        title="重命名会话"
+        open={Boolean(renameTarget)}
+        okText="保存"
+        cancelText="取消"
+        confirmLoading={renameSaving}
+        okButtonProps={{ disabled: !renameValue.trim() }}
+        onOk={confirmRename}
+        onCancel={() => {
+          if (!renameSaving) setRenameTarget(null);
+        }}
+      >
+        <div className="rename-conversation-field">
+          <label htmlFor="conversation-title">会话名称</label>
+          <Input
+            id="conversation-title"
+            value={renameValue}
+            maxLength={60}
+            showCount
+            autoFocus
+            onChange={(event) => setRenameValue(event.target.value)}
+            onPressEnter={() => {
+              if (renameValue.trim() && !renameSaving) void confirmRename();
+            }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

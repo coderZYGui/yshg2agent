@@ -1,0 +1,104 @@
+.sidebar .conv-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+}
+
+.sidebar .conv-open {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.sidebar .conv-open:disabled {
+  cursor: not-allowed;
+}
+
+.sidebar .conv-open:focus-visible {
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--app-accent-mid);
+}
+
+.sidebar .conv-item-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  margin-right: 8px;
+}
+
+.sidebar .conv-item.pinned .conv-item-icon {
+  color: var(--app-accent);
+}
+
+.sidebar .conv-item-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar .conv-more.ant-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  margin: -4px -5px -4px 5px;
+  padding: 0;
+  color: var(--app-text-secondary);
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.sidebar .conv-item:hover .conv-more,
+.sidebar .conv-item:focus-within .conv-more,
+.sidebar .conv-item.active .conv-more,
+.sidebar .conv-more.ant-btn[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.sidebar .conv-more.ant-btn:hover,
+.sidebar .conv-more.ant-btn:focus-visible {
+  color: var(--app-text-primary);
+  background: var(--app-surface-alt);
+}
+
+.conversation-action-menu .ant-dropdown-menu {
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 28px var(--app-shadow);
+}
+
+.conversation-action-menu .ant-dropdown-menu-item {
+  min-height: 36px;
+  border-radius: 8px;
+}
+
+.rename-conversation-field {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.rename-conversation-field label {
+  color: var(--app-text-secondary);
+  font-size: 13px;
+}
+
+@media (hover: none) {
+  .sidebar .conv-more.ant-btn {
+    opacity: 1;
+  }
+}

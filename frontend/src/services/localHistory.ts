@@ -1,4 +1,5 @@
 import type { ChatMessage, Conversation, RoleKey } from "../types";
+import { sortConversations } from "../utils/sortConversations";
 
 const DATABASE_NAME = "privacy-compliance-review";
 const DATABASE_VERSION = 1;
@@ -7,6 +8,7 @@ const CONVERSATION_STORE = "conversations";
 interface StoredConversation extends Conversation {
   owner: string;
   messages: ChatMessage[];
+  title_customized?: boolean;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -46,16 +48,18 @@ export async function listLocalConversations(owner: string): Promise<Conversatio
     const rows = await requestResult<StoredConversation[]>(
       transaction.objectStore(CONVERSATION_STORE).getAll()
     );
-    return rows
-      .filter((row) => row.owner === owner)
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-      .map(({ id, title, role, created_at, updated_at }) => ({
-        id,
-        title,
-        role,
-        created_at,
-        updated_at,
-      }));
+    return sortConversations(
+      rows
+        .filter((row) => row.owner === owner)
+        .map(({ id, title, role, created_at, updated_at, pinned }) => ({
+          id,
+          title,
+          role,
+          created_at,
+          updated_at,
+          pinned: Boolean(pinned),
+        }))
+    );
   } finally {
     database.close();
   }
@@ -86,7 +90,8 @@ export async function saveLocalConversation(
   const existing = await getLocalConversation(owner, id);
   const now = new Date().toISOString();
   const firstQuestion = messages.find((message) => message.role === "user")?.content ?? "";
-  const title = firstQuestion.replace(/\s+/g, " ").trim().slice(0, 20) || "新会话";
+  const generatedTitle = firstQuestion.replace(/\s+/g, " ").trim().slice(0, 20) || "新会话";
+  const title = existing?.title_customized ? existing.title : generatedTitle;
   const storedMessages = messages.map(({ streaming: _streaming, ...message }) => message);
   const database = await openDatabase();
 
@@ -100,6 +105,52 @@ export async function saveLocalConversation(
       created_at: existing?.created_at ?? now,
       updated_at: now,
       messages: storedMessages,
+      pinned: existing?.pinned ?? false,
+      title_customized: existing?.title_customized ?? false,
+    } satisfies StoredConversation);
+    await transactionComplete(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+export async function renameLocalConversation(
+  owner: string,
+  id: string,
+  title: string
+): Promise<void> {
+  const existing = await getLocalConversation(owner, id);
+  const normalizedTitle = title.replace(/\s+/g, " ").trim();
+  if (!existing || !normalizedTitle) return;
+
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(CONVERSATION_STORE, "readwrite");
+    transaction.objectStore(CONVERSATION_STORE).put({
+      ...existing,
+      title: normalizedTitle,
+      title_customized: true,
+    } satisfies StoredConversation);
+    await transactionComplete(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+export async function setLocalConversationPinned(
+  owner: string,
+  id: string,
+  pinned: boolean
+): Promise<void> {
+  const existing = await getLocalConversation(owner, id);
+  if (!existing) return;
+
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(CONVERSATION_STORE, "readwrite");
+    transaction.objectStore(CONVERSATION_STORE).put({
+      ...existing,
+      pinned,
     } satisfies StoredConversation);
     await transactionComplete(transaction);
   } finally {
