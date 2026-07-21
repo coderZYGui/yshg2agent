@@ -14,3 +14,7 @@ def save_upload(filename: str, data: bytes) -> str:
 
 def read_file(path: str) -> bytes:
     return Path(path).read_bytes()
+
+
+def delete_upload(path: str) -> None:
+    Path(path).unlink(missing_ok=True)

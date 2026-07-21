@@ -46,6 +46,10 @@ export async function uploadDocument(file: File, kind = "review") {
   return data as DocumentItem;
 }
 
+export async function deleteDocument(id: number) {
+  await api.delete(`/documents/${id}`);
+}
+
 export interface StreamHandlers {
   onMeta?: (m: { attachments?: number; images?: number }) => void;
   onToken?: (t: string) => void;

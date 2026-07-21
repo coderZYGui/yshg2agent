@@ -20,9 +20,10 @@ export interface ReviewResult {
 }
 
 export interface ChatAttachment {
-  id: number;
+  id: string | number;
   filename: string;
   mime: string;
+  contentBlob?: Blob;
   previewBlob?: Blob;
 }
 
@@ -44,7 +45,10 @@ export interface Conversation {
   pinned?: boolean;
 }
 
-export interface DocumentItem extends ChatAttachment {
+export interface DocumentItem {
+  id: number;
+  filename: string;
+  mime: string;
   kind: string;
   parse_status: string;
   summary: string;

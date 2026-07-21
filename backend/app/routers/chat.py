@@ -12,7 +12,7 @@ from ..database import get_db
 from ..deps import get_current_user
 from ..models import Document, User
 from ..schemas import ChatRequest
-from ..services import llm
+from ..services import llm, storage
 from ..services.bailian_files import BailianFileError
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -40,11 +40,21 @@ def _extract_json(text: str) -> dict | None:
         return None
 
 
-def _attachment_docs(db: Session, document_ids: list[int]) -> list[dict]:
+def _attachment_docs(
+    db: Session, document_ids: list[int], owner_id: int
+) -> list[dict]:
     if not document_ids:
         return []
 
-    docs = db.query(Document).filter(Document.id.in_(document_ids)).all()
+    docs = (
+        db.query(Document)
+        .filter(
+            Document.id.in_(document_ids),
+            Document.owner_id == owner_id,
+            Document.kind == "review",
+        )
+        .all()
+    )
     payloads = []
     for doc in docs:
         mime = doc.mime or mimetypes.guess_type(doc.filename)[0] or ""
@@ -104,13 +114,32 @@ async def _upload_session_files(docs: list[dict]) -> list[str]:
     return file_ids
 
 
+def _delete_attachment_docs(db: Session, docs: list[dict], owner_id: int) -> None:
+    document_ids = [doc["id"] for doc in docs]
+    if not document_ids:
+        return
+    rows = (
+        db.query(Document)
+        .filter(
+            Document.id.in_(document_ids),
+            Document.owner_id == owner_id,
+            Document.kind == "review",
+        )
+        .all()
+    )
+    for row in rows:
+        storage.delete_upload(row.storage_path)
+        db.delete(row)
+    db.commit()
+
+
 @router.post("/stream")
 async def chat_stream(
     req: ChatRequest,
     db: Session = Depends(get_db),
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
-    docs = _attachment_docs(db, req.document_ids)
+    docs = _attachment_docs(db, req.document_ids, user.id)
     image_urls = _image_data_urls(docs)
     user_prompt = _build_bailian_prompt(req.role, req.message, docs)
 
@@ -143,17 +172,17 @@ async def chat_stream(
                 yield _sse("token", {"t": token})
         except BailianFileError as exc:
             yield _sse("error", {"message": str(exc)})
-            return
         except Exception:
             yield _sse("error", {"message": "智能体调用失败，请稍后重试。"})
-            return
+        else:
+            review = _extract_json(buffer) or {
+                "summary": buffer,
+                "items": [],
+            }
 
-        review = _extract_json(buffer) or {
-            "summary": buffer,
-            "items": [],
-        }
-
-        yield _sse("review", review)
-        yield _sse("done", {})
+            yield _sse("review", review)
+            yield _sse("done", {})
+        finally:
+            _delete_attachment_docs(db, docs, user.id)
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")

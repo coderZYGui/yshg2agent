@@ -101,3 +101,23 @@ def get_document(
     if not doc:
         raise HTTPException(status_code=404, detail="document not found")
     return doc
+
+
+@router.delete("/{doc_id}", status_code=204)
+def delete_document(
+    doc_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    doc = (
+        db.query(Document)
+        .filter(
+            Document.id == doc_id,
+            Document.owner_id == user.id,
+            Document.kind == "review",
+        )
+        .first()
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="document not found")
+    storage.delete_upload(doc.storage_path)
+    db.delete(doc)
+    db.commit()

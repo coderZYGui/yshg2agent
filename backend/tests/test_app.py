@@ -196,3 +196,27 @@ def test_document_upload_does_not_create_local_chunks(client, auth_headers):
 
     with SessionLocal() as db:
         assert db.query(Chunk).filter(Chunk.document_id == doc_id).count() == 0
+
+
+def test_review_attachment_is_removed_after_chat_finishes(client, auth_headers):
+    files = {"file": ("temporary.md", b"temporary review content", "text/markdown")}
+    upload = client.post(
+        "/api/documents/upload",
+        data={"kind": "review"},
+        files=files,
+        headers=auth_headers,
+    )
+    assert upload.status_code == 200
+    doc_id = upload.json()["id"]
+    assert client.get(f"/api/documents/{doc_id}", headers=auth_headers).status_code == 200
+
+    with client.stream(
+        "POST",
+        "/api/chat/stream",
+        json={"role": "pm", "message": "请评审附件", "document_ids": [doc_id]},
+        headers=auth_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert "event: done" in "".join(response.iter_text())
+
+    assert client.get(f"/api/documents/{doc_id}", headers=auth_headers).status_code == 404

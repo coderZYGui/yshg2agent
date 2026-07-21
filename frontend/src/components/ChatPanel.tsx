@@ -13,7 +13,7 @@ import type { ClipboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { chatStream, uploadDocument } from "../api/client";
+import { chatStream, deleteDocument, uploadDocument } from "../api/client";
 import { saveLocalConversation } from "../services/localHistory";
 import { useStore } from "../store/useStore";
 import { colors } from "../theme";
@@ -123,21 +123,22 @@ function AttachmentPreview({
   const [source, setSource] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const isImage = attachment.mime.startsWith("image/");
+  const contentBlob = attachment.contentBlob ?? attachment.previewBlob;
 
   useEffect(() => {
     setSource(null);
     setFailed(false);
-    if (!isImage || !attachment.previewBlob) {
+    if (!isImage || !contentBlob) {
       setFailed(isImage);
       return;
     }
-    const objectUrl = URL.createObjectURL(attachment.previewBlob);
+    const objectUrl = URL.createObjectURL(contentBlob);
     setSource(objectUrl);
 
     return () => {
       URL.revokeObjectURL(objectUrl);
     };
-  }, [attachment.previewBlob, isImage]);
+  }, [contentBlob, isImage]);
 
   if (!isImage) {
     return (
@@ -260,22 +261,19 @@ export default function ChatPanel() {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const handleAttach = async (file: File) => {
+  const handleAttach = (file: File) => {
     const validationError = validateAttachment(file);
     if (validationError) {
       antdMessage.error(validationError);
       return false;
     }
-    try {
-      const doc = await uploadDocument(file, "review");
-      addAttachment({
-        ...doc,
-        previewBlob: file.type.startsWith("image/") ? file : undefined,
-      });
-      antdMessage.success(`已上传 ${file.name}`);
-    } catch {
-      antdMessage.error("上传失败");
-    }
+    addAttachment({
+      id: crypto.randomUUID(),
+      filename: file.name,
+      mime: file.type || "application/octet-stream",
+      contentBlob: file,
+    });
+    antdMessage.success(`已添加 ${file.name}`);
     return false;
   };
 
@@ -285,19 +283,21 @@ export default function ChatPanel() {
 
     event.preventDefault();
     for (const file of files) {
-      await handleAttach(file);
+      handleAttach(file);
     }
   };
 
   const send = async () => {
     if (!text.trim() || sending) return;
     const userText = text.trim();
-    const sentAttachments = attachments.map(({ id, filename, mime, previewBlob }) => ({
-      id,
-      filename,
-      mime,
-      previewBlob,
-    }));
+    const sentAttachments = attachments.map(
+      ({ id, filename, mime, contentBlob, previewBlob }) => ({
+        id,
+        filename,
+        mime,
+        contentBlob: contentBlob ?? previewBlob,
+      })
+    );
     const localConversationId = conversationId ?? crypto.randomUUID();
     if (!conversationId) setConversationId(localConversationId);
     setText("");
@@ -311,39 +311,57 @@ export default function ChatPanel() {
     setSending(true);
     setActiveReview(null);
 
-    const docIds = attachments.map((a) => a.id);
-
-    await chatStream(
-      { role, message: userText, document_ids: docIds },
-      {
-        onToken: (token) => {
-          appendToLastAssistant(token);
-        },
-        onReview: (r) => {
-          setActiveReview(r);
-          const contentPatch = r.items.length ? { content: formatReviewMarkdown(r) } : {};
-          updateLastAssistant({ ...contentPatch, review: r, streaming: false });
-        },
-        onDone: () => setSending(false),
-        onError: (error) => {
-          const content = error instanceof Error ? error.message : "附件处理失败";
-          updateLastAssistant({ content, streaming: false });
-          setSending(false);
-        },
-      }
-    );
-    clearAttachments();
-    const state = useStore.getState();
+    const uploadedDocumentIds: number[] = [];
     try {
-      await saveLocalConversation(
-        state.username ?? "anonymous",
-        localConversationId,
-        role,
-        state.messages
+      for (const attachment of attachments) {
+        const blob = attachment.contentBlob ?? attachment.previewBlob;
+        if (!blob) throw new Error(`无法读取本地附件：${attachment.filename}`);
+        const file =
+          blob instanceof File
+            ? blob
+            : new File([blob], attachment.filename, { type: attachment.mime });
+        const document = await uploadDocument(file, "review");
+        uploadedDocumentIds.push(document.id);
+      }
+
+      await chatStream(
+        { role, message: userText, document_ids: uploadedDocumentIds },
+        {
+          onToken: (token) => {
+            appendToLastAssistant(token);
+          },
+          onReview: (r) => {
+            setActiveReview(r);
+            const contentPatch = r.items.length ? { content: formatReviewMarkdown(r) } : {};
+            updateLastAssistant({ ...contentPatch, review: r, streaming: false });
+          },
+          onDone: () => setSending(false),
+          onError: (error) => {
+            const content = error instanceof Error ? error.message : "附件处理失败";
+            updateLastAssistant({ content, streaming: false });
+            setSending(false);
+          },
+        }
       );
-      notifyHistoryChanged();
-    } catch {
-      antdMessage.error("本地历史记录保存失败");
+    } catch (error) {
+      const content = error instanceof Error ? error.message : "附件处理失败";
+      updateLastAssistant({ content, streaming: false });
+      setSending(false);
+    } finally {
+      clearAttachments();
+      await Promise.allSettled(uploadedDocumentIds.map((id) => deleteDocument(id)));
+      const state = useStore.getState();
+      try {
+        await saveLocalConversation(
+          state.username ?? "anonymous",
+          localConversationId,
+          role,
+          state.messages
+        );
+        notifyHistoryChanged();
+      } catch {
+        antdMessage.error("本地历史记录保存失败");
+      }
     }
   };
 

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { ThemeMode } from "../theme";
-import type { ChatMessage, DocumentItem, ReviewResult, RoleKey } from "../types";
+import type { ChatAttachment, ChatMessage, ReviewResult, RoleKey } from "../types";
 
 function getInitialThemeMode(): ThemeMode {
   const saved = localStorage.getItem("themeMode");
@@ -18,7 +18,7 @@ interface AppState {
   conversationId: string | null;
   messages: ChatMessage[];
   activeReview: ReviewResult | null;
-  attachments: DocumentItem[];
+  attachments: ChatAttachment[];
   sending: boolean;
   themeMode: ThemeMode;
   historyVersion: number;
@@ -37,7 +37,7 @@ interface AppState {
   updateLastAssistant: (patch: Partial<ChatMessage>) => void;
   appendToLastAssistant: (text: string) => void;
   setActiveReview: (r: ReviewResult | null) => void;
-  addAttachment: (d: DocumentItem) => void;
+  addAttachment: (d: ChatAttachment) => void;
   clearAttachments: () => void;
   setSending: (v: boolean) => void;
   setThemeMode: (mode: ThemeMode) => void;
