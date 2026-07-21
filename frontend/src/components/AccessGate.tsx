@@ -3,19 +3,18 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import "./access-gate.css";
 
 interface AccessGateProps {
-  checking: boolean;
   onVerified: () => void;
 }
 
-export default function AccessGate({ checking, onVerified }: AccessGateProps) {
+export default function AccessGate({ onVerified }: AccessGateProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!checking) inputRef.current?.focus();
-  }, [checking]);
+    inputRef.current?.focus();
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -70,13 +69,13 @@ export default function AccessGate({ checking, onVerified }: AccessGateProps) {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder={checking ? "正在检查访问状态…" : "输入访问密码"}
+              placeholder="输入访问密码"
               autoComplete="current-password"
-              disabled={checking || submitting}
+              disabled={submitting}
             />
           </label>
-          <button type="submit" disabled={checking || submitting || !password}>
-            {checking ? "检查中" : submitting ? "校验中" : "校验"}
+          <button type="submit" disabled={submitting || !password}>
+            {submitting ? "校验中" : "校验"}
           </button>
         </form>
         <div className="access-gate__feedback" role="status" aria-live="polite">

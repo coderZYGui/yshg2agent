@@ -64,11 +64,13 @@ export default function App() {
 
   return (
     <ConfigProvider theme={getAntdTheme(themeMode)} locale={zhCN}>
-      {accessState !== "verified" ? (
-        <AccessGate
-          checking={accessState === "checking"}
-          onVerified={() => setAccessState("verified")}
-        />
+      {accessState === "checking" ? (
+        <>
+          <div className="app-glow" />
+          <div className="app-shell" aria-label="正在验证访问状态" />
+        </>
+      ) : accessState === "required" ? (
+        <AccessGate onVerified={() => setAccessState("verified")} />
       ) : (
         <>
           <div className="app-glow" />
